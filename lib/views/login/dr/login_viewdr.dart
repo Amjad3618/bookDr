@@ -152,6 +152,7 @@ class _LoginViewDrState extends State<LoginViewDr> {
       validator: (value) {
         if (value?.isEmpty ?? true) return 'Password is required';
         if ((value?.length ?? 0) < 6)
+          // ignore: curly_braces_in_flow_control_structures
           return 'Password must be at least 6 characters';
         return null;
       },
@@ -294,7 +295,7 @@ class _LoginViewDrState extends State<LoginViewDr> {
           GestureDetector(
             onTap: () {
               // Navigate to registration screen
-              Navigator.pushReplacementNamed(context, RouteNames.registerdr);
+              Navigator.pushNamed(context, RouteNames.registerdr);
             },
             child: Text(
               'Register here',

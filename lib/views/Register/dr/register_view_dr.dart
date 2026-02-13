@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:bookdr/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+
+import '../../../core/utils/image_croper.dart';
 
 class RegisterViewDr extends StatefulWidget {
   const RegisterViewDr({super.key});
@@ -10,7 +14,8 @@ class RegisterViewDr extends StatefulWidget {
 
 class _RegisterViewDrState extends State<RegisterViewDr> {
   final _formKey = GlobalKey<FormState>();
-  
+   // ignore: unused_field
+   File? _profileImage;
   // Form controllers
   late TextEditingController _fullNameController;
   late TextEditingController _emailController;
@@ -67,6 +72,10 @@ class _RegisterViewDrState extends State<RegisterViewDr> {
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.white,
           centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           title: const Text(
             'Doctor Registration',
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -81,6 +90,15 @@ class _RegisterViewDrState extends State<RegisterViewDr> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSectionTitle('Personal Information'),
+                  DoctorProfileImageSection(
+                  onImageSelected: (imageFile) {
+                    setState(() {
+                      _profileImage = imageFile;
+                    });
+                    // Optionally log the image path
+                    print('Profile image selected: ${imageFile.path}');
+                  },
+                ),
                 _buildTextField(
                   controller: _fullNameController,
                   label: 'Full Name',
