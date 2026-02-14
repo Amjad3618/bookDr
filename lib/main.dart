@@ -1,4 +1,4 @@
-import 'package:bookdr/views/dr_or_patient/dr_or_patient.dart';
+import 'package:bookdr/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 
 import 'routes/app_routes.dart';
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
      debugShowCheckedModeBanner: false,
        onGenerateRoute: AppRoutes.generateRoute,
-      home: DrOrPatient()
+      home: const MainScreen()
     );
   }
 }

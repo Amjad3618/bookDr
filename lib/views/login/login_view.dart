@@ -2,14 +2,14 @@ import 'package:bookdr/core/theme/app_colors.dart';
 import 'package:bookdr/routes/route_names.dart';
 import 'package:flutter/material.dart';
 
-class LoginViewDr extends StatefulWidget {
-  const LoginViewDr({super.key});
+class LoginView extends StatefulWidget {
+  const LoginView({super.key});
 
   @override
-  State<LoginViewDr> createState() => _LoginViewDrState();
+  State<LoginView> createState() => _LoginViewState();
 }
 
-class _LoginViewDrState extends State<LoginViewDr> {
+class _LoginViewState extends State<LoginView> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _emailController;
@@ -86,7 +86,7 @@ class _LoginViewDrState extends State<LoginViewDr> {
         ),
         const SizedBox(height: 24),
         Text(
-          'Welcome Back, Doctor',
+          'Welcome Back, Patient',
           style: Theme.of(context).textTheme.displaySmall?.copyWith(
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
