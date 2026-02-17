@@ -19,6 +19,7 @@ class DoctorProfileImageSection extends StatefulWidget {
 
 class _DoctorProfileImageSectionState extends State<DoctorProfileImageSection> {
   File? _selectedImage;
+  // ignore: unused_field
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
