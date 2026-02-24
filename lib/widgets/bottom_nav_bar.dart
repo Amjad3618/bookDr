@@ -1,217 +1,13 @@
-
-import 'dart:ui';
-
 import 'package:bookdr/views/Doctors/doctors_view.dart';
 import 'package:bookdr/views/appointments/appointments_view.dart';
 import 'package:bookdr/views/home/home_view.dart';
 import 'package:bookdr/views/search/search_view.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/theme/app_colors.dart';
 import '../views/profile/profile_view.dart';
-
-class FloatingNavBar extends StatefulWidget {
-  final int currentIndex;
-  final Function(int) onTap;
-
-  const FloatingNavBar({
-    super.key,
-    required this.currentIndex,
-    required this.onTap,
-  });
-
-  @override
-  State<FloatingNavBar> createState() => _FloatingNavBarState();
-}
-
-class _FloatingNavBarState extends State<FloatingNavBar>
-    with TickerProviderStateMixin {
-  late AnimationController _animationController;
-  late List<AnimationController> _itemControllers;
-
-  final List<NavItem> items = [
-    NavItem(icon: Icons.home_rounded, label: 'Home'),
-    NavItem(icon: Icons.search_rounded, label: 'Search'),
-     NavItem(icon: Icons.group_rounded, label: 'Doctors'),
-    NavItem(icon: Icons.calendar_today_rounded, label: 'Appointments'),
-    NavItem(icon: Icons.person_rounded, label: 'Profile'),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _itemControllers = List.generate(
-      items.length,
-      (index) => AnimationController(
-        duration: const Duration(milliseconds: 400),
-        vsync: this,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    for (var controller in _itemControllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 20,
-      left: 20,
-      right: 20,
-      child: Container(
-        height: 70,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.black.withOpacity(0.3),
-              blurRadius: 30,
-              spreadRadius: 5,
-              offset: const Offset(0, 10),
-            ),
-            BoxShadow(
-              color: AppColors.black.withOpacity(0.15),
-              blurRadius: 15,
-              spreadRadius: 2,
-              offset: const Offset(0, 5),
-            ),
-          ],
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.black.withOpacity(0.95),
-              AppColors.overlay.withOpacity(0.85),
-            ],
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(25),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1.5,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(
-                  items.length,
-                  (index) => _buildNavItem(
-                    index: index,
-                    item: items[index],
-                    isActive: widget.currentIndex == index,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required NavItem item,
-    required bool isActive,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        widget.onTap(index);
-        _animateItem(index);
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0, end: isActive ? 1 : 0),
-            duration: const Duration(milliseconds: 300),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: 1 + (value * 0.15),
-                child: Container(
-                  width: 40,
-                  height: 37,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(15),
-                      bottomRight: Radius.circular(15),
-                    ),
-                    color: isActive
-                        ? Colors.white.withOpacity(0.3)
-                        : Colors.transparent,
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.3),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: Icon(
-                    item.icon,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 4),
-          if (isActive)
-            TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 300),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Text(
-                    item.label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _animateItem(int index) {
-    _itemControllers[index].forward().then((_) {
-      _itemControllers[index].reverse();
-    });
-  }
-}
-
-class NavItem {
-  final IconData icon;
-  final String label;
-
-  NavItem({required this.icon, required this.label});
-}
-
-// ====== MAIN APP WITH FLOATING NAV BAR EXAMPLE ======
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -223,6 +19,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
+  // ── Screens ───────────────────────────────────────────────────────────────
   final List<Widget> _screens = [
     const HomeView(),
     const SearchView(),
@@ -231,23 +28,105 @@ class _MainScreenState extends State<MainScreen> {
     const ProfileView(),
   ];
 
+  // ── Nav metadata ──────────────────────────────────────────────────────────
+  static const _navItems = [
+    _NavMeta(Icons.home_rounded, 'Home'),
+    _NavMeta(Icons.search_rounded, 'Search'),
+    _NavMeta(Icons.groups_rounded, 'Doctors'),
+    _NavMeta(Icons.calendar_month_rounded, 'Schedule'),
+    _NavMeta(Icons.person_rounded, 'Profile'),
+  ];
+
+  // ── Colors — orange theme matching CareSync Dr exactly ────────────────────
+  static const Color _barColor = Color(
+    0xFFD35400,
+  ); // AppColors.primaryDark  (dark orange)
+  static const Color _buttonColor = Color(
+    0xFFE67E22,
+  ); // AppColors.primary      (main orange)
+  static const Color _bgColor = Colors.transparent;
+
   @override
   Widget build(BuildContext context) {
+    // Keep status bar icons light over the dark bar
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(statusBarIconBrightness: Brightness.light),
+    );
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      body: Stack(
-        children: [
-          _screens[_currentIndex],
-          FloatingNavBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-          ),
-        ],
+
+      // IndexedStack keeps every screen alive — scroll positions &
+      // form data are preserved when switching tabs
+      body: IndexedStack(index: _currentIndex, children: _screens),
+
+      // ── Curved Navigation Bar ─────────────────────────────────────────────
+      // Scaffold.bottomNavigationBar reserves space automatically,
+      // so screens end above the bar — zero overlap with buttons / forms
+      bottomNavigationBar: CurvedNavigationBar(
+        index: _currentIndex,
+        height: 65,
+
+        // The bar background strip
+        color: _barColor,
+
+        // The colour of the area that "shows through" behind the curve dip
+        backgroundColor: _bgColor,
+
+        // The raised circle behind the active icon
+        buttonBackgroundColor: _buttonColor,
+
+        animationDuration: const Duration(milliseconds: 320),
+        animationCurve: Curves.easeInOutCubic,
+
+        items: _navItems
+            .map((n) => _CurvedNavIcon(icon: n.icon, label: n.label))
+            .toList(),
+
+        onTap: (index) {
+          HapticFeedback.selectionClick();
+          setState(() => _currentIndex = index);
+        },
       ),
     );
   }
+}
+
+// ── Icon + label widget supplied to CurvedNavigationBar.items ─────────────────
+// The bar automatically lifts the active item into the raised circle;
+// we just style the icon and tiny label below it.
+class _CurvedNavIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _CurvedNavIcon({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: Colors.white, size: 26),
+        // Label is tiny and optional — remove if you prefer icon-only
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 8,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Simple data class
+class _NavMeta {
+  final IconData icon;
+  final String label;
+  const _NavMeta(this.icon, this.label);
 }
