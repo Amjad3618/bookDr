@@ -25,7 +25,6 @@ class _SearchViewState extends State<SearchView> with TickerProviderStateMixin {
   String _selectedSpecialty  = 'All';
   String _selectedAvailability = 'Any Time';
   String _selectedGender     = 'Any';
-  String _selectedFee        = 'Any';
   RangeValues _feeRange      = const RangeValues(0, 5000);
   double _minRating          = 0;
 
@@ -580,7 +579,7 @@ class _SearchViewState extends State<SearchView> with TickerProviderStateMixin {
               child: Container(
                 decoration: BoxDecoration(
                   color: c[0], borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: (c[1] as Color).withOpacity(0.2)),
+                  border: Border.all(color: (c[1]).withOpacity(0.2)),
                   boxShadow: AppColors.subtleShadow,
                 ),
                 child: Column(
@@ -590,11 +589,11 @@ class _SearchViewState extends State<SearchView> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.7),
                       shape: BoxShape.circle),
-                    child: Icon(icon, color: c[1] as Color, size: 22)),
+                    child: Icon(icon, color: c[1], size: 22)),
                   const SizedBox(height: 8),
                   Text(spec, textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
-                      color: c[1] as Color)),
+                      color: c[1])),
                 ]),
               ),
             );

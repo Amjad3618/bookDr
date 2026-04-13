@@ -2,6 +2,7 @@ import 'package:bookdr/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 
 import 'routes/app_routes.dart';
+import 'views/login/login_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +17,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
      debugShowCheckedModeBanner: false,
        onGenerateRoute: AppRoutes.generateRoute,
-      home: const MainScreen()
+      home: const LoginView()
     );
   }
 }

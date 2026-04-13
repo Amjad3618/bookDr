@@ -63,6 +63,23 @@ class _RegisterViewState extends State<RegisterView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: InkWell(
+                        onTap: (){},
+                        child: Icon(Icons.camera_alt_outlined, size: 50),
+                      ),
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 20),
                 _buildTextField(
                   controller: _usernameController,
@@ -107,7 +124,8 @@ class _RegisterViewState extends State<RegisterView> {
                   hint: 'Confirm your password',
                   obscure: _obscureConfirmPassword,
                   onVisibilityToggle: () => setState(
-                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  ),
                   validator: (value) {
                     if (value?.isEmpty ?? true)
                       return 'Confirm password required';
@@ -164,8 +182,10 @@ class _RegisterViewState extends State<RegisterView> {
         ),
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
+        ),
       ),
     );
   }
@@ -211,8 +231,10 @@ class _RegisterViewState extends State<RegisterView> {
         ),
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
+        ),
       ),
     );
   }
@@ -263,10 +285,7 @@ class _RegisterViewState extends State<RegisterView> {
         ),
         child: const Text(
           'Register',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
