@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "155138227125",
+    "project_id": "caresync-4f245",
+    "storage_bucket": "caresync-4f245.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155138227125:android:069f728ce32cbea3c677fc",
+        "android_client_info": {
+          "package_name": "com.example.bookdr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDx-pd56aorBiYxcVygqoFfoc6F3DyMGFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155138227125:android:05ce244ca38c50f2c677fc",
+        "android_client_info": {
+          "package_name": "com.example.caresyncdr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDx-pd56aorBiYxcVygqoFfoc6F3DyMGFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
