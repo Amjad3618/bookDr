@@ -37,18 +37,13 @@ class _MainScreenState extends State<MainScreen> {
     _NavMeta(Icons.person_rounded, 'Profile'),
   ];
 
-  // ── Colors — orange theme matching CareSync Dr exactly ────────────────────
-  static const Color _barColor = Color(
-    0xFFD35400,
-  ); // AppColors.primaryDark  (dark orange)
-  static const Color _buttonColor = Color(
-    0xFFE67E22,
-  ); // AppColors.primary      (main orange)
+  // ── Colors (UNCHANGED) ────────────────────────────────────────────────────
+  static const Color _barColor = Color(0xFFD35400);
+  static const Color _buttonColor = Color(0xFFE67E22);
   static const Color _bgColor = Colors.transparent;
 
   @override
   Widget build(BuildContext context) {
-    // Keep status bar icons light over the dark bar
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(statusBarIconBrightness: Brightness.light),
     );
@@ -56,26 +51,14 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
 
-      // IndexedStack keeps every screen alive — scroll positions &
-      // form data are preserved when switching tabs
       body: IndexedStack(index: _currentIndex, children: _screens),
 
-      // ── Curved Navigation Bar ─────────────────────────────────────────────
-      // Scaffold.bottomNavigationBar reserves space automatically,
-      // so screens end above the bar — zero overlap with buttons / forms
       bottomNavigationBar: CurvedNavigationBar(
         index: _currentIndex,
-        height: 65,
-
-        // The bar background strip
+        height: 60, // 🔥 reduced height (fix spacing)
         color: _barColor,
-
-        // The colour of the area that "shows through" behind the curve dip
         backgroundColor: _bgColor,
-
-        // The raised circle behind the active icon
         buttonBackgroundColor: _buttonColor,
-
         animationDuration: const Duration(milliseconds: 320),
         animationCurve: Curves.easeInOutCubic,
 
@@ -92,9 +75,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// ── Icon + label widget supplied to CurvedNavigationBar.items ─────────────────
-// The bar automatically lifts the active item into the raised circle;
-// we just style the icon and tiny label below it.
+// ── FIXED NAV ICON (LESS SPACE, CLEAN LOOK) ────────────────────────────────
 class _CurvedNavIcon extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -103,28 +84,30 @@ class _CurvedNavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: Colors.white, size: 26),
-        // Label is tiny and optional — remove if you prefer icon-only
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 8,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 0), // 🔥 reduce bottom gap
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 24), // slightly smaller
+
+          const SizedBox(height: 1), // tight spacing
+
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 7,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-// Simple data class
+// ── DATA CLASS ─────────────────────────────────────────────────────────────
 class _NavMeta {
   final IconData icon;
   final String label;

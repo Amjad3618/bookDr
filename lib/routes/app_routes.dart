@@ -1,3 +1,4 @@
+import 'package:bookdr/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 
 import '../views/Register/register_view.dart';
@@ -12,6 +13,8 @@ class AppRoutes {
 
       case RouteNames.registerdr:
         return MaterialPageRoute(builder: (_) => const RegisterView());
+         case RouteNames.mainscreen:
+        return MaterialPageRoute(builder: (_) => const MainScreen());
 
       default:
         return MaterialPageRoute(
