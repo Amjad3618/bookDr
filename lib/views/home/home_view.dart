@@ -1,11 +1,13 @@
+// lib/views/home_view.dart  ·  PATIENT APP
+// ════════════════════════════════════════════════════════════════════════════
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:bookdr/core/theme/app_colors.dart';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// HOME VIEW  ·  CareSync Patients App
-// Place at: lib/views/home/home_view.dart
-// ══════════════════════════════════════════════════════════════════════════════
+import '../../models/dr_model.dart';
+import '../../providers/homegig_provider.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -14,749 +16,1184 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
+class _HomeViewState extends State<HomeView> {
   final _searchCtrl = TextEditingController();
-  int _selectedCategory = 0;
-  int _activeBanner = 0;
-  final _bannerPage = PageController();
+  final _scrollCtrl = ScrollController();
+  bool _headerCollapsed = false;
 
-  // ── Static data ───────────────────────────────────────────────────────────
-  static const _categories = [
-    _Cat('All',           Icons.grid_view_rounded),
-    _Cat('Cardiologist',  Icons.favorite_rounded),
-    _Cat('Neurologist',   Icons.psychology_rounded),
-    _Cat('Orthopedic',    Icons.accessibility_new_rounded),
-    _Cat('Dermatologist', Icons.face_rounded),
-    _Cat('Pediatrician',  Icons.child_care_rounded),
-    _Cat('Dentist',       Icons.medical_services_rounded),
-  ];
+  // ── Consultation type helpers ─────────────────────────────────────────────
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'Video Call':
+        return const Color(0xFF3498DB);
+      case 'Chat / Messaging':
+        return const Color(0xFF27AE60);
+      case 'Report Review Only':
+        return const Color(0xFFF39C12);
+      default:
+        return AppColors.primary;
+    }
+  }
 
-  static const _doctors = [
-    _Doctor('Dr. Ahmed Khan',  'Cardiologist',    4.9, 1240, true),
-    _Doctor('Dr. Sara Malik',  'Neurologist',     4.8,  980, true),
-    _Doctor('Dr. Usman Ali',   'Orthopedic',      4.7,  760, false),
-    _Doctor('Dr. Ayesha Noor', 'Dermatologist',   4.9, 1120, true),
-    _Doctor('Dr. Bilal Raza',  'Pediatrician',    4.6,  540, false),
-    _Doctor('Dr. Hina Shahid', 'Dentist',         4.8,  890, true),
-  ];
+  IconData _typeIcon(String type) {
+    switch (type) {
+      case 'Video Call':
+        return Icons.videocam_rounded;
+      case 'Chat / Messaging':
+        return Icons.chat_bubble_rounded;
+      case 'Report Review Only':
+        return Icons.description_rounded;
+      default:
+        return Icons.medical_services_rounded;
+    }
+  }
 
-  static const _banners = [
-    _BannerData('Book Your First\nConsultation Free!',
-        'Use code FIRST100 at checkout',
-        Icons.local_offer_rounded, Color(0xFFE67E22), Color(0xFFD35400)),
-    _BannerData('Video Consultation\nAvailable 24/7',
-        'Connect with top doctors anytime',
-        Icons.videocam_rounded, Color(0xFF3498DB), Color(0xFF2980B9)),
-    _BannerData('Your Health Reports\nIn One Place',
-        'Manage all your records easily',
-        Icons.folder_shared_rounded, Color(0xFF27AE60), Color(0xFF1E8449)),
-  ];
-
-  static const _services = [
-    _Svc('Video\nConsult',  Icons.videocam_rounded,          Color(0xFFE67E22), Color(0xFFFEEBD8)),
-    _Svc('Book\nClinic',    Icons.local_hospital_rounded,    Color(0xFF3498DB), Color(0xFFEBF5FB)),
-    _Svc('Lab\nTests',      Icons.biotech_rounded,           Color(0xFF27AE60), Color(0xFFD5F4E6)),
-    _Svc('My\nReports',     Icons.description_rounded,       Color(0xFF9B59B6), Color(0xFFF5EEF8)),
-    _Svc('Pharmacy',        Icons.local_pharmacy_rounded,    Color(0xFFE74C3C), Color(0xFFFDEDEB)),
-    _Svc('Ambulance',       Icons.emergency_rounded,         Color(0xFFF39C12), Color(0xFFFEEBD8)),
-    _Svc('Health\nBlog',    Icons.article_rounded,           Color(0xFF1ABC9C), Color(0xFFE8F8F5)),
-    _Svc('Near\nMe',        Icons.near_me_rounded,           Color(0xFF2C3E50), Color(0xFFEAECEE)),
-  ];
-
-  static const _hospitals = [
-    _Hospital('City Hospital',     '4.8', '0.8 km', Color(0xFFFEEBD8), Color(0xFFE67E22)),
-    _Hospital('Medicare Clinic',   '4.6', '1.2 km', Color(0xFFEBF5FB), Color(0xFF3498DB)),
-    _Hospital('Al-Shifa Hospital', '4.9', '2.1 km', Color(0xFFD5F4E6), Color(0xFF27AE60)),
-    _Hospital('Care Center',       '4.7', '3.4 km', Color(0xFFFEEBD8), Color(0xFFF39C12)),
-  ];
+  IconData _catIcon(String cat) {
+    const map = <String, IconData>{
+      'All': Icons.grid_view_rounded,
+      'Cardiology': Icons.favorite_rounded,
+      'Diagnostics': Icons.biotech_rounded,
+      'Lifestyle': Icons.self_improvement_rounded,
+      'Pediatrics': Icons.child_care_rounded,
+      'General': Icons.local_hospital_rounded,
+      'Psychiatry': Icons.psychology_rounded,
+      'Neurology': Icons.psychology_outlined,
+      'Orthopedics': Icons.accessibility_new_rounded,
+      'Dermatology': Icons.face_rounded,
+      'Dentistry': Icons.medical_services_rounded,
+    };
+    return map[cat] ?? Icons.medical_services_rounded;
+  }
 
   @override
   void initState() {
     super.initState();
-    _startAutoBanner();
-  }
-
-  void _startAutoBanner() async {
-    while (mounted) {
-      await Future.delayed(const Duration(seconds: 4));
-      if (!mounted) break;
-      final next = (_activeBanner + 1) % _banners.length;
-      _bannerPage.animateToPage(next,
-          duration: const Duration(milliseconds: 500), curve: Curves.easeInOutCubic);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HomeGigProvider>().initialise();
+    });
+    _searchCtrl.addListener(() => setState(() {}));
+    _scrollCtrl.addListener(() {
+      final collapsed = _scrollCtrl.offset > 10;
+      if (collapsed != _headerCollapsed) {
+        setState(() => _headerCollapsed = collapsed);
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
-    _bannerPage.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ══════════════════════════════════════════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            SliverToBoxAdapter(child: _buildSearchBar()),
-            SliverToBoxAdapter(child: _buildBanner()),
-            SliverToBoxAdapter(child: _buildUpcomingCard()),
-            SliverToBoxAdapter(child: _buildQuickServices()),
-            SliverToBoxAdapter(child: _buildCategoryBar()),
-            SliverToBoxAdapter(child: _buildTopDoctors()),
-            SliverToBoxAdapter(child: _buildNearbyHospitals()),
-            const SliverToBoxAdapter(child: SizedBox(height: 30)),
-          ],
+        child: Consumer<HomeGigProvider>(
+          builder: (_, prov, __) => CustomScrollView(
+            controller: _scrollCtrl,
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // ── Sticky gradient header ──────────────────────────────────
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _StickyHeaderDelegate(
+                  minHeight: 70,
+                  maxHeight: 160,
+                  child: _buildHeroHeader(prov),
+                ),
+              ),
+
+              // ── Search bar ──────────────────────────────────────────────
+              SliverToBoxAdapter(child: _buildSearchBar(prov)),
+
+              // ── Category pills ──────────────────────────────────────────
+              SliverToBoxAdapter(child: _buildCategoryPills(prov)),
+
+              // ── Section title ───────────────────────────────────────────
+              SliverToBoxAdapter(child: _buildFeedHeader(prov)),
+
+              // ── Gig feed ─────────────────────────────────────────────────
+              _buildFeedSliver(prov),
+
+              // ── Bottom padding ────────────────────────────────────────────
+              const SliverToBoxAdapter(child: SizedBox(height: 60)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── HEADER ────────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good Morning 👋'
-        : hour < 17 ? 'Good Afternoon 👋'
-        : 'Good Evening 👋';
+  // ══════════════════════════════════════════════════════════════════════════
+  // HERO HEADER — gradient, patient name, notification bell
+  // ══════════════════════════════════════════════════════════════════════════
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-      child: Row(children: [
-        // Avatar with orange border
-        Container(
-          width: 50, height: 50,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary, width: 2.5),
-            color: AppColors.primaryExtraLight,
+  Widget _buildHeroHeader(HomeGigProvider prov) {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning ☀️'
+        : hour < 17
+        ? 'Good afternoon 👋'
+        : 'Good evening 🌙';
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFF6B35), Color(0xFFFF8C42), Color(0xFFFFAB5A)],
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: avatar + name + notification
+          Row(
+            children: [
+              // Patient avatar
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  color: Colors.white.withOpacity(0.25),
+                ),
+                child: ClipOval(
+                  child:
+                      prov.patientImageUrl != null &&
+                          prov.patientImageUrl!.isNotEmpty
+                      ? Image.network(
+                          prov.patientImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.person_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Greeting + name
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      greeting,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.85),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    prov.patientLoading
+                        ? Container(
+                            width: 120,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          )
+                        : Text(
+                            prov.patientFirstName.isNotEmpty
+                                ? prov.patientFirstName
+                                : 'Welcome back!',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+
+              // Notification bell
+              GestureDetector(
+                onTap: () => HapticFeedback.selectionClick(),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(color: Colors.white.withOpacity(0.35)),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white,
+                        size: 21,
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF4757),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          child: ClipOval(
-            child: Image.network(
-              'https://via.placeholder.com/100',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.person_rounded, color: AppColors.primary, size: 28),
+
+          const SizedBox(height: 14),
+
+          // Tagline
+          Text(
+            'Find the best doctor\nfor your health needs',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withOpacity(0.92),
+              height: 1.35,
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-
-        // Name + greeting
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(greeting,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          const Text('Ali Raza Hassan',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary)),
-        ])),
-
-        // Notification button
-        _iconBtn(Icons.notifications_outlined, badge: true, onTap: () {}),
-        const SizedBox(width: 10),
-
-        // Support button
-        _iconBtn(Icons.headset_mic_rounded, badge: false, onTap: () {}),
-      ]),
+        ],
+      ),
     );
   }
 
-  Widget _iconBtn(IconData icon, {required bool badge, required VoidCallback onTap}) =>
-    GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42, height: 42,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: AppColors.borderGray),
-          boxShadow: AppColors.subtleShadow),
-        child: Stack(alignment: Alignment.center, children: [
-          Icon(icon, color: AppColors.textSecondary, size: 21),
-          if (badge)
-            Positioned(top: 8, right: 8, child: Container(
-              width: 8, height: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.error, shape: BoxShape.circle))),
-        ]),
-      ),
-    );
+  // ══════════════════════════════════════════════════════════════════════════
+  // SEARCH BAR
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // ── SEARCH BAR ────────────────────────────────────────────────────────────
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
-      child: Row(children: [
-        Expanded(
-          child: Container(
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderGray),
-              boxShadow: AppColors.subtleShadow),
+  Widget _buildSearchBar(HomeGigProvider prov) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      height: 50,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderGray),
+        boxShadow: AppColors.subtleShadow,
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 14),
+          const Icon(
+            Icons.search_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: TextField(
               controller: _searchCtrl,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+              onChanged: (v) => prov.onSearchChanged(v),
               decoration: InputDecoration(
-                hintText: 'Search doctors, specialties...',
+                hintText: 'Search doctors, specialties, services…',
                 hintStyle: TextStyle(
-                  color: AppColors.textSecondary.withOpacity(0.6), fontSize: 13),
-                prefixIcon: const Icon(
-                  Icons.search_rounded, color: AppColors.textSecondary, size: 20),
-                suffixIcon: GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryExtraLight,
-                      borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 18)),
+                  color: AppColors.textSecondary.withOpacity(0.55),
+                  fontSize: 13,
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 15)),
+                isDense: true,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        // Mic button
-        Container(
-          width: 52, height: 52,
-          decoration: BoxDecoration(
-            gradient: AppColors.orangeGradient,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(
-              color: AppColors.primary.withOpacity(0.35),
-              blurRadius: 12, offset: const Offset(0, 4))]),
-          child: const Icon(Icons.mic_rounded, color: Colors.white, size: 22),
-        ),
-      ]),
+          if (_searchCtrl.text.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                _searchCtrl.clear();
+                prov.resetFilters();
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: AppColors.textSecondary,
+                  size: 18,
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 12),
+        ],
+      ),
     );
   }
 
-  // ── PROMO BANNER (auto-scroll) ────────────────────────────────────────────
-  Widget _buildBanner() {
-    return Column(children: [
-      SizedBox(
-        height: 150,
-        child: PageView.builder(
-          controller: _bannerPage,
-          onPageChanged: (i) => setState(() => _activeBanner = i),
-          itemCount: _banners.length,
-          itemBuilder: (_, i) {
-            final b = _banners[i];
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [b.c1, b.c2],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [BoxShadow(
-                  color: b.c1.withOpacity(0.35), blurRadius: 18,
-                  offset: const Offset(0, 6))]),
-              child: Stack(children: [
-                Positioned(top: -20, right: -20, child: _bubble(110, 0.09)),
-                Positioned(top: 20, right: 35,   child: _bubble(55,  0.07)),
-                Positioned(bottom: -30, right: 70,child: _bubble(75,  0.05)),
-                Positioned(right: 16, bottom: 8,
-                  child: Icon(b.icon, color: Colors.white.withOpacity(0.22), size: 85)),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 100, 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(b.title, style: const TextStyle(
-                        color: Colors.white, fontSize: 18,
-                        fontWeight: FontWeight.bold, height: 1.25)),
-                      const SizedBox(height: 5),
-                      Text(b.subtitle, style: TextStyle(
-                        color: Colors.white.withOpacity(0.85), fontSize: 11)),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                        child: Text('Book Now', style: TextStyle(
-                          color: b.c1, fontSize: 11, fontWeight: FontWeight.bold)),
-                      ),
-                    ]),
-                ),
-              ]),
-            );
-          },
-        ),
-      ),
-      const SizedBox(height: 10),
-      // Dot indicators
-      Row(mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(_banners.length, (i) => AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: _activeBanner == i ? 18 : 6, height: 6,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(3),
-            color: _activeBanner == i ? AppColors.primary : AppColors.borderGray),
-        ))),
-      const SizedBox(height: 22),
-    ]);
-  }
+  // ══════════════════════════════════════════════════════════════════════════
+  // CATEGORY PILLS
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // ── UPCOMING APPOINTMENT CARD ──────────────────────────────────────────────
-  Widget _buildUpcomingCard() {
+  Widget _buildCategoryPills(HomeGigProvider prov) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionRow('Upcoming Appointment', onSeeAll: () {}),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.primaryDark, AppColors.primary],
-              begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
-              blurRadius: 18, offset: const Offset(0, 6))]),
-          child: Stack(children: [
-            Positioned(top: -15, right: -15, child: _bubble(80, 0.09)),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                // Doctor avatar
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: Colors.white.withOpacity(0.2),
-                    border: Border.all(color: Colors.white.withOpacity(0.35), width: 2)),
-                  child: const Icon(Icons.person_rounded, color: Colors.white, size: 30),
-                ),
-                const SizedBox(width: 14),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Dr. Ahmed Khan', style: TextStyle(
-                    color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 2),
-                  const Text('Cardiologist  ·  Online Now',
-                    style: TextStyle(color: Colors.white70, fontSize: 11)),
-                ])),
-                // Type badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(12)),
-                  child: const Column(children: [
-                    Icon(Icons.videocam_rounded, color: Colors.white, size: 18),
-                    SizedBox(height: 2),
-                    Text('Video', style: TextStyle(
-                      color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                  ]),
-                ),
-              ]),
-              const SizedBox(height: 14),
-              // Date + time chips
-              Row(children: [
-                _chip(Icons.calendar_today_rounded, 'Mon, 24 Feb 2025'),
-                const SizedBox(width: 8),
-                _chip(Icons.access_time_rounded, '10:30 AM'),
-              ]),
-              const SizedBox(height: 14),
-              // Action buttons
-              Row(children: [
-                Expanded(child: _outlineBtn('Reschedule', onTap: () {})),
-                const SizedBox(width: 10),
-                Expanded(child: _solidBtn('Join Now', onTap: () {})),
-              ]),
-            ]),
-          ]),
-        ),
-        const SizedBox(height: 24),
-      ]),
-    );
-  }
-
-  Widget _chip(IconData icon, String label) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.15),
-      borderRadius: BorderRadius.circular(9)),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, color: Colors.white, size: 11),
-      const SizedBox(width: 5),
-      Text(label, style: const TextStyle(color: Colors.white, fontSize: 10)),
-    ]),
-  );
-
-  Widget _outlineBtn(String label, {required VoidCallback onTap}) =>
-    GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 38,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: Colors.white.withOpacity(0.5))),
-        child: Center(child: Text(label, style: const TextStyle(
-          color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))),
-      ),
-    );
-
-  Widget _solidBtn(String label, {required VoidCallback onTap}) =>
-    GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(11)),
-        child: Center(child: Text(label, style: const TextStyle(
-          color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold))),
-      ),
-    );
-
-  // ── QUICK SERVICES ────────────────────────────────────────────────────────
-  Widget _buildQuickServices() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionRow('Quick Services', onSeeAll: null),
-        const SizedBox(height: 14),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            mainAxisSpacing: 14, crossAxisSpacing: 12,
-            childAspectRatio: 0.82,
-          ),
-          itemCount: _services.length,
-          itemBuilder: (_, i) {
-            final s = _services[i];
-            return GestureDetector(
-              onTap: () => HapticFeedback.selectionClick(),
-              child: Column(children: [
-                Container(
-                  width: 58, height: 58,
-                  decoration: BoxDecoration(
-                    color: s.bg, borderRadius: BorderRadius.circular(18),
-                    boxShadow: [BoxShadow(
-                      color: s.color.withOpacity(0.2),
-                      blurRadius: 8, offset: const Offset(0, 3))]),
-                  child: Icon(s.icon, color: s.color, size: 26),
-                ),
-                const SizedBox(height: 6),
-                Text(s.label, textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary, height: 1.2)),
-              ]),
-            );
-          },
-        ),
-        const SizedBox(height: 26),
-      ]),
-    );
-  }
-
-  // ── SPECIALTY CATEGORY BAR ────────────────────────────────────────────────
-  Widget _buildCategoryBar() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: _sectionRow('Find a Specialist', onSeeAll: () {}),
-      ),
-      const SizedBox(height: 12),
-      SizedBox(
-        height: 44,
+      padding: const EdgeInsets.only(top: 14, bottom: 4),
+      child: SizedBox(
+        height: 40,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount: _categories.length,
+          itemCount: prov.categories.length,
           itemBuilder: (_, i) {
-            final sel = _selectedCategory == i;
+            final cat = prov.categories[i];
+            final selected = prov.selectedCategory == cat;
             return GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() => _selectedCategory = i);
+                prov.selectCategory(cat);
               },
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(right: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: sel ? AppColors.primary : AppColors.surface,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: sel ? AppColors.primary : AppColors.borderGray),
-                  boxShadow: sel ? [BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 8, offset: const Offset(0, 3))] : [],
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(_categories[i].icon,
-                    color: sel ? Colors.white : AppColors.textSecondary, size: 14),
-                  const SizedBox(width: 6),
-                  Text(_categories[i].label, style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600,
-                    color: sel ? Colors.white : AppColors.textSecondary)),
-                ]),
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primary : AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: selected ? AppColors.primary : AppColors.borderGray,
+                  ),
+                  boxShadow: selected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.28),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _catIcon(cat),
+                      size: 13,
+                      color: selected ? Colors.white : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      cat,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: selected
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
         ),
       ),
-      const SizedBox(height: 18),
-    ]);
-  }
-
-  // ── TOP DOCTORS LIST ──────────────────────────────────────────────────────
-  Widget _buildTopDoctors() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionRow('Top Doctors', onSeeAll: () {}),
-        const SizedBox(height: 14),
-        ...List.generate(_doctors.length,
-          (i) => _DoctorCard(doctor: _doctors[i])),
-        const SizedBox(height: 26),
-      ]),
     );
   }
 
-  // ── NEARBY HOSPITALS ──────────────────────────────────────────────────────
-  Widget _buildNearbyHospitals() {
+  // ══════════════════════════════════════════════════════════════════════════
+  // FEED HEADER
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildFeedHeader(HomeGigProvider prov) {
+    String title;
+    if (prov.searchQuery.trim().isNotEmpty) {
+      title = 'Results for "${prov.searchQuery.trim()}"';
+    } else if (prov.selectedCategory != 'All') {
+      title = prov.selectedCategory;
+    } else {
+      title = 'All Doctors';
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionRow('Nearby Hospitals', onSeeAll: () {}),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 166,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _hospitals.length,
-            itemBuilder: (_, i) {
-              final h = _hospitals[i];
-              return Container(
-                width: 158,
-                margin: EdgeInsets.only(right: i < _hospitals.length - 1 ? 12 : 0),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.borderGray),
-                  boxShadow: AppColors.subtleShadow,
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: h.bg, borderRadius: BorderRadius.circular(14)),
-                    child: Icon(Icons.local_hospital_rounded, color: h.ic, size: 22),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(h.name, style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    const Icon(Icons.star_rounded, color: AppColors.warning, size: 12),
-                    const SizedBox(width: 3),
-                    Text(h.rating, style: const TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary)),
-                    Text('  ·  ${h.dist}', style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
-                  ]),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryExtraLight,
-                      borderRadius: BorderRadius.circular(9)),
-                    child: const Text('Get Directions', style: TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.bold,
-                      color: AppColors.primary)),
-                  ),
-                ]),
-              );
-            },
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
-        ),
-      ]),
+          if (!prov.isLoading && prov.gigs.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryExtraLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${prov.gigs.length} doctors',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  // ── HELPERS ───────────────────────────────────────────────────────────────
-  Widget _sectionRow(String title, {required VoidCallback? onSeeAll}) => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(title, style: const TextStyle(
-        fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-      if (onSeeAll != null)
-        GestureDetector(
-          onTap: onSeeAll,
-          child: const Text('See All', style: TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
-        ),
-    ],
-  );
+  // ══════════════════════════════════════════════════════════════════════════
+  // FEED SLIVER
+  // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _bubble(double size, double opacity) => Container(
-    width: size, height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle, color: Colors.white.withOpacity(opacity)),
-  );
+  Widget _buildFeedSliver(HomeGigProvider prov) {
+    if (prov.isLoading) {
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (_, __) => const _GigTileSkeleton(),
+          childCount: 4,
+        ),
+      );
+    }
+
+    if (prov.hasError) {
+      return SliverToBoxAdapter(
+        child: _ErrorRetry(
+          message: prov.errorMessage ?? 'Failed to load.',
+          onRetry: prov.loadGigs,
+        ),
+      );
+    }
+
+    if (prov.gigs.isEmpty) {
+      return const SliverToBoxAdapter(child: _EmptyState());
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (_, i) => _GigTile(
+          gig: prov.gigs[i],
+          typeColor: _typeColor(prov.gigs[i].consultationTypeStr),
+          typeIcon: _typeIcon(prov.gigs[i].consultationTypeStr),
+          onChat: () {
+            HapticFeedback.selectionClick();
+            // TODO: navigate to chat with prov.gigs[i].drId
+          },
+          onBook: () {
+            HapticFeedback.mediumImpact();
+            // TODO: navigate to booking screen with prov.gigs[i]
+          },
+        ),
+        childCount: prov.gigs.length,
+      ),
+    );
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DOCTOR CARD
+// STICKY HEADER DELEGATE
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _DoctorCard extends StatelessWidget {
-  final _Doctor doctor;
-  const _DoctorCard({required this.doctor});
+class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double minHeight;
+  final double maxHeight;
+  final Widget child;
+
+  const _StickyHeaderDelegate({
+    required this.minHeight,
+    required this.maxHeight,
+    required this.child,
+  });
+
+  @override
+  double get minExtent => minHeight;
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  bool shouldRebuild(_StickyHeaderDelegate old) =>
+      maxHeight != old.maxHeight ||
+      minHeight != old.minHeight ||
+      child != old.child;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GIG TILE  — Fiverr-style card
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _GigTile extends StatelessWidget {
+  final GigModel gig;
+  final Color typeColor;
+  final IconData typeIcon;
+  final VoidCallback onChat;
+  final VoidCallback onBook;
+
+  const _GigTile({
+    required this.gig,
+    required this.typeColor,
+    required this.typeIcon,
+    required this.onChat,
+    required this.onBook,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.borderGray),
         boxShadow: AppColors.subtleShadow,
       ),
-      child: Row(children: [
-        // Avatar with online dot
-        Stack(children: [
-          Container(
-            width: 68, height: 68,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              color: AppColors.primaryExtraLight),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Image.network('https://via.placeholder.com/100',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.person_rounded, color: AppColors.primary, size: 36)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCover(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDoctorRow(),
+                const SizedBox(height: 10),
+                _buildTitle(),
+                const SizedBox(height: 5),
+                _buildMetaRow(),
+                const SizedBox(height: 10),
+                _buildTypeTags(),
+                const SizedBox(height: 12),
+                _buildPackagesRow(),
+                const SizedBox(height: 12),
+                Divider(color: AppColors.borderGray, thickness: 0.8, height: 1),
+                const SizedBox(height: 12),
+                _buildBottomRow(),
+              ],
             ),
           ),
-          Positioned(bottom: 4, right: 4, child: Container(
-            width: 13, height: 13,
-            decoration: BoxDecoration(
-              color: AppColors.success, shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2)),
-          )),
-        ]),
-        const SizedBox(width: 14),
-
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Name + verified badge
-          Row(children: [
-            Expanded(child: Text(doctor.name, style: const TextStyle(
-              fontSize: 14, fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary))),
-            if (doctor.verified) Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.successLight, borderRadius: BorderRadius.circular(8)),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.verified_rounded, color: AppColors.success, size: 10),
-                SizedBox(width: 3),
-                Text('Verified', style: TextStyle(
-                  fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.success)),
-              ]),
-            ),
-          ]),
-          const SizedBox(height: 3),
-          Text(doctor.specialty, style: const TextStyle(
-            fontSize: 12, color: AppColors.textSecondary)),
-          const SizedBox(height: 5),
-          // Rating + reviews
-          Row(children: [
-            const Icon(Icons.star_rounded, color: AppColors.warning, size: 13),
-            const SizedBox(width: 3),
-            Text('${doctor.rating}', style: const TextStyle(
-              fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-            Text('  (${doctor.reviews} reviews)', style: const TextStyle(
-              fontSize: 11, color: AppColors.textSecondary)),
-          ]),
-          const SizedBox(height: 9),
-          // Action buttons
-          Row(children: [
-            Expanded(child: GestureDetector(
-              onTap: () => HapticFeedback.selectionClick(),
-              child: Container(
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: AppColors.orangeGradient,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 6, offset: const Offset(0, 2))]),
-                child: const Center(child: Text('Book Now', style: TextStyle(
-                  color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
-              ),
-            )),
-            const SizedBox(width: 8),
-            // Chat
-            _actionIcon(Icons.chat_bubble_outline_rounded,
-              AppColors.primary, AppColors.primaryExtraLight),
-            const SizedBox(width: 8),
-            // Video
-            _actionIcon(Icons.videocam_outlined,
-              AppColors.info, AppColors.infoLight),
-          ]),
-        ])),
-      ]),
+        ],
+      ),
     );
   }
 
-  Widget _actionIcon(IconData icon, Color color, Color bg) => Container(
-    width: 34, height: 34,
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-    child: Icon(icon, color: color, size: 16),
+  // ── Cover ─────────────────────────────────────────────────────────────────
+  Widget _buildCover() {
+    if (gig.coverImageUrl.isEmpty) return const SizedBox.shrink();
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: Stack(
+        children: [
+          Image.network(
+            gig.coverImageUrl,
+            height: 175,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            loadingBuilder: (_, child, progress) => progress == null
+                ? child
+                : Container(
+                    height: 175,
+                    color: AppColors.borderGray,
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+          // Featured badge
+          if (gig.isFeatured)
+            Positioned(
+              top: 12,
+              left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD97706),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star_rounded, color: Colors.white, size: 10),
+                    SizedBox(width: 4),
+                    Text(
+                      'Featured',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Doctor row ────────────────────────────────────────────────────────────
+  Widget _buildDoctorRow() {
+    return Row(
+      children: [
+        _avatar(),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      gig.drName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (gig.drIsVerified) ...[
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.verified_rounded,
+                      color: Color(0xFF3498DB),
+                      size: 15,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                gig.drSpecialty,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _avatar() {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: AppColors.primaryExtraLight,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: gig.drImageUrl.isNotEmpty
+            ? Image.network(
+                gig.drImageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.person_rounded,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+              )
+            : const Icon(
+                Icons.person_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+      ),
+    );
+  }
+
+  // ── Gig title ─────────────────────────────────────────────────────────────
+  Widget _buildTitle() => Text(
+    gig.fullTitle,
+    style: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+      height: 1.3,
+    ),
+    maxLines: 2,
+    overflow: TextOverflow.ellipsis,
+  );
+
+  
+
+  // ── Meta row: rating + orders ─────────────────────────────────────────────
+  Widget _buildMetaRow() => Row(
+    children: [
+      if (gig.drRating > 0) ...[
+        const Icon(Icons.star_rounded, size: 13, color: Color(0xFFF59E0B)),
+        const SizedBox(width: 3),
+        Text(
+          gig.drRating.toStringAsFixed(1),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        Text(
+          ' (${gig.totalReviews})',
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+        const SizedBox(width: 10),
+      ],
+      if (gig.totalOrders > 0) ...[
+        const Icon(
+          Icons.shopping_bag_outlined,
+          size: 12,
+          color: AppColors.textSecondary,
+        ),
+        const SizedBox(width: 3),
+        Text(
+          '${gig.totalOrders} orders',
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+      ],
+    ],
+  );
+
+  // ── Type + category tags ──────────────────────────────────────────────────
+  Widget _buildTypeTags() => Wrap(
+    spacing: 6,
+    runSpacing: 6,
+    children: [
+      _tag(typeIcon, gig.consultationTypeStr, typeColor),
+      _tag(Icons.grid_view_rounded, gig.category, AppColors.textSecondary),
+      if (gig.hasPmdcUploaded)
+        _tag(Icons.verified_rounded, 'PMDC Verified', const Color(0xFF27AE60)),
+    ],
+  );
+
+  Widget _tag(IconData icon, String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withOpacity(0.3)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 10, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  // ── Packages row ──────────────────────────────────────────────────────────
+  Widget _buildPackagesRow() {
+    final pkgs = [
+      (
+        gig.basicPackage,
+        const Color(0xFF3498DB),
+        const Color(0xFFEBF5FB),
+        'Basic',
+      ),
+      (
+        gig.standardPackage,
+        AppColors.primary,
+        AppColors.primaryExtraLight,
+        'Standard',
+      ),
+      (
+        gig.premiumPackage,
+        const Color(0xFFF59E0B),
+        const Color(0xFFFEF3C7),
+        'Premium',
+      ),
+    ];
+    return Row(
+      children: pkgs.asMap().entries.map((e) {
+        final i = e.key;
+        final pkg = e.value.$1;
+        final col = e.value.$2;
+        final bg = e.value.$3;
+        final name = e.value.$4;
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: i < 2 ? 6 : 0),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: col.withOpacity(0.25)),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: col,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Rs. ${pkg.price.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: col,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  pkg.deliveryTime,
+                  style: TextStyle(fontSize: 9, color: col.withOpacity(0.75)),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── Bottom: price + chat + book ───────────────────────────────────────────
+  Widget _buildBottomRow() => Row(
+    children: [
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Starting from',
+            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            'Rs. ${gig.startingPrice.toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+      const Spacer(),
+
+      // Chat
+      GestureDetector(
+        onTap: onChat,
+        child: Container(
+          height: 40,
+          width: 40,
+          decoration: BoxDecoration(
+            color: AppColors.primaryExtraLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+          ),
+          child: const Icon(
+            Icons.chat_bubble_outline_rounded,
+            color: AppColors.primary,
+            size: 18,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+
+      // Book Now
+      GestureDetector(
+        onTap: onBook,
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          decoration: BoxDecoration(
+            gradient: AppColors.orangeGradient,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Text(
+              'Book Now',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
   );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DATA MODELS
+// SKELETON LOADER
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _Cat {
-  final String label; final IconData icon;
-  const _Cat(this.label, this.icon);
+class _GigTileSkeleton extends StatefulWidget {
+  const _GigTileSkeleton();
+  @override
+  State<_GigTileSkeleton> createState() => _GigTileSkeletonState();
 }
 
-class _Doctor {
-  final String name, specialty;
-  final double rating;
-  final int reviews;
-  final bool verified;
-  const _Doctor(this.name, this.specialty, this.rating, this.reviews, this.verified);
+class _GigTileSkeletonState extends State<_GigTileSkeleton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _anim = Tween<double>(
+      begin: 0.4,
+      end: 0.9,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Opacity(
+        opacity: _anim.value,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.borderGray),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image placeholder
+              Container(
+                height: 175,
+                decoration: BoxDecoration(
+                  color: AppColors.borderGray,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _sh(44, 44, r: 12),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _sh(12, 130),
+                              const SizedBox(height: 6),
+                              _sh(10, 80),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _sh(14, double.infinity),
+                    const SizedBox(height: 6),
+                    _sh(12, double.infinity),
+                    const SizedBox(height: 6),
+                    _sh(12, 180),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(child: _sh(50, double.infinity, r: 10)),
+                        const SizedBox(width: 6),
+                        Expanded(child: _sh(50, double.infinity, r: 10)),
+                        const SizedBox(width: 6),
+                        Expanded(child: _sh(50, double.infinity, r: 10)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _sh(40, double.infinity, r: 12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sh(double h, double w, {double r = 6}) => Container(
+    height: h,
+    width: w,
+    margin: const EdgeInsets.only(bottom: 0),
+    decoration: BoxDecoration(
+      color: AppColors.borderGray,
+      borderRadius: BorderRadius.circular(r),
+    ),
+  );
 }
 
-class _BannerData {
-  final String title, subtitle;
-  final IconData icon;
-  final Color c1, c2;
-  const _BannerData(this.title, this.subtitle, this.icon, this.c1, this.c2);
+// ══════════════════════════════════════════════════════════════════════════════
+// ERROR STATE
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _ErrorRetry extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorRetry({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
+    child: Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.errorLight,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.wifi_off_rounded,
+            color: AppColors.error,
+            size: 36,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 20),
+        GestureDetector(
+          onTap: onRetry,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.orangeGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'Try again',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
-class _Svc {
-  final String label; final IconData icon; final Color color, bg;
-  const _Svc(this.label, this.icon, this.color, this.bg);
-}
+// ══════════════════════════════════════════════════════════════════════════════
+// EMPTY STATE
+// ══════════════════════════════════════════════════════════════════════════════
 
-class _Hospital {
-  final String name, rating, dist;
-  final Color bg, ic;
-  const _Hospital(this.name, this.rating, this.dist, this.bg, this.ic);
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 70, horizontal: 32),
+    child: Column(
+      children: [
+        Icon(
+          Icons.search_off_rounded,
+          color: AppColors.textSecondary,
+          size: 52,
+        ),
+        SizedBox(height: 14),
+        Text(
+          'No doctors found',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          'Try a different search or category.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+      ],
+    ),
+  );
 }

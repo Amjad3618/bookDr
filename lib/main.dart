@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
+import 'providers/homegig_provider.dart';
 import 'widgets/auth_wrapper.dart';
 
 void main() async {
@@ -19,9 +20,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => PatientAuthProvider(),
-        ),
+        ChangeNotifierProvider(create: (_) => PatientAuthProvider()),
+        ChangeNotifierProvider(create: (_) => HomeGigProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
