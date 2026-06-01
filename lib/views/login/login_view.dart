@@ -345,7 +345,7 @@ class _LoginViewState extends State<LoginView>
       password: _passCtrl.text.trim(),
     );
     if (ok && mounted) {
-      Navigator.of(context).pushNamed('/mainscreen');
+      Navigator.of(context).pushNamed('/Mainscreen');
     }
   }
 
