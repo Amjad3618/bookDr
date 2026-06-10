@@ -19,7 +19,6 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView> {
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  bool _headerCollapsed = false;
 
   // ── Consultation type helpers ─────────────────────────────────────────────
   Color _typeColor(String type) {
@@ -72,12 +71,6 @@ class _HomeViewState extends State<HomeView> {
       context.read<HomeGigProvider>().initialise();
     });
     _searchCtrl.addListener(() => setState(() {}));
-    _scrollCtrl.addListener(() {
-      final collapsed = _scrollCtrl.offset > 10;
-      if (collapsed != _headerCollapsed) {
-        setState(() => _headerCollapsed = collapsed);
-      }
-    });
   }
 
   @override
@@ -93,79 +86,25 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      body: SafeArea(
-        child: Consumer<HomeGigProvider>(
-          builder: (_, prov, __) => CustomScrollView(
-            controller: _scrollCtrl,
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── Sticky gradient header ──────────────────────────────────
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _StickyHeaderDelegate(
-                  minHeight: 70,
-                  maxHeight: 160,
-                  child: _buildHeroHeader(prov),
-                ),
-              ),
+    return Consumer<HomeGigProvider>(
+      builder: (_, prov, __) => Scaffold(
+        backgroundColor: AppColors.backgroundColor,
 
-              // ── Search bar ──────────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildSearchBar(prov)),
-
-              // ── Category pills ──────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildCategoryPills(prov)),
-
-              // ── Section title ───────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildFeedHeader(prov)),
-
-              // ── Gig feed ─────────────────────────────────────────────────
-              _buildFeedSliver(prov),
-
-              // ── Bottom padding ────────────────────────────────────────────
-              const SliverToBoxAdapter(child: SizedBox(height: 60)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // HERO HEADER — gradient, patient name, notification bell
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildHeroHeader(HomeGigProvider prov) {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good morning ☀️'
-        : hour < 17
-        ? 'Good afternoon 👋'
-        : 'Good evening 🌙';
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFF6B35), Color(0xFFFF8C42), Color(0xFFFFAB5A)],
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top row: avatar + name + notification
-          Row(
+        // ── Simple AppBar ──────────────────────────────────────────────────
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFFF6B35),
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          titleSpacing: 16,
+          title: Row(
             children: [
-              // Patient avatar
+              // Avatar
               Container(
-                width: 46,
-                height: 46,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: Colors.white, width: 1.8),
                   color: Colors.white.withOpacity(0.25),
                 ),
                 child: ClipOval(
@@ -178,39 +117,41 @@ class _HomeViewState extends State<HomeView> {
                           errorBuilder: (_, __, ___) => const Icon(
                             Icons.person_rounded,
                             color: Colors.white,
-                            size: 24,
+                            size: 20,
                           ),
                         )
                       : const Icon(
                           Icons.person_rounded,
                           color: Colors.white,
-                          size: 24,
+                          size: 20,
                         ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
 
               // Greeting + name
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      greeting,
+                      _greeting(),
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.white.withOpacity(0.85),
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w400,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 2),
                     prov.patientLoading
                         ? Container(
-                            width: 120,
-                            height: 16,
+                            width: 100,
+                            height: 13,
+                            margin: const EdgeInsets.only(top: 3),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                           )
                         : Text(
@@ -218,69 +159,90 @@ class _HomeViewState extends State<HomeView> {
                                 ? prov.patientFirstName
                                 : 'Welcome back!',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              letterSpacing: -0.3,
+                              letterSpacing: -0.2,
+                              height: 1.2,
                             ),
                           ),
                   ],
                 ),
               ),
-
-              // Notification bell
-              GestureDetector(
-                onTap: () => HapticFeedback.selectionClick(),
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(13),
-                    border: Border.all(color: Colors.white.withOpacity(0.35)),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.white,
-                        size: 21,
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFF4757),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
 
-          const SizedBox(height: 14),
-
-          // Tagline
-          Text(
-            'Find the best doctor\nfor your health needs',
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.white.withOpacity(0.92),
-              height: 1.35,
-              fontWeight: FontWeight.w500,
+          // Notification bell on the right
+          actions: [
+            GestureDetector(
+              onTap: () => HapticFeedback.selectionClick(),
+              child: Container(
+                width: 38,
+                height: 38,
+                margin: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: Colors.white.withOpacity(0.35)),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white,
+                      size: 19,
+                    ),
+                    Positioned(
+                      top: 7,
+                      right: 7,
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFF4757),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+
+        // ── Body ───────────────────────────────────────────────────────────
+        body: CustomScrollView(
+          controller: _scrollCtrl,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ── Search bar ────────────────────────────────────────────────
+            SliverToBoxAdapter(child: _buildSearchBar(prov)),
+
+            // ── Category pills ────────────────────────────────────────────
+            SliverToBoxAdapter(child: _buildCategoryPills(prov)),
+
+            // ── Feed header ───────────────────────────────────────────────
+            SliverToBoxAdapter(child: _buildFeedHeader(prov)),
+
+            // ── Gig feed ──────────────────────────────────────────────────
+            _buildFeedSliver(prov),
+
+            // ── Bottom padding ────────────────────────────────────────────
+            const SliverToBoxAdapter(child: SizedBox(height: 60)),
+          ],
+        ),
       ),
     );
+  }
+
+  // ── Greeting helper ────────────────────────────────────────────────────────
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning ☀️';
+    if (h < 17) return 'Good afternoon 👋';
+    return 'Good evening 🌙';
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -313,7 +275,7 @@ class _HomeViewState extends State<HomeView> {
                 fontSize: 14,
                 color: AppColors.textPrimary,
               ),
-              onChanged: (v) => prov.onSearchChanged(v),
+              onChanged: prov.onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search doctors, specialties, services…',
                 hintStyle: TextStyle(
@@ -501,14 +463,8 @@ class _HomeViewState extends State<HomeView> {
           gig: prov.gigs[i],
           typeColor: _typeColor(prov.gigs[i].consultationTypeStr),
           typeIcon: _typeIcon(prov.gigs[i].consultationTypeStr),
-          onChat: () {
-            HapticFeedback.selectionClick();
-            // TODO: navigate to chat with prov.gigs[i].drId
-          },
-          onBook: () {
-            HapticFeedback.mediumImpact();
-            // TODO: navigate to booking screen with prov.gigs[i]
-          },
+          onChat: () => HapticFeedback.selectionClick(),
+          onBook: () => HapticFeedback.mediumImpact(),
         ),
         childCount: prov.gigs.length,
       ),
@@ -517,43 +473,7 @@ class _HomeViewState extends State<HomeView> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// STICKY HEADER DELEGATE
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final double minHeight;
-  final double maxHeight;
-  final Widget child;
-
-  const _StickyHeaderDelegate({
-    required this.minHeight,
-    required this.maxHeight,
-    required this.child,
-  });
-
-  @override
-  double get minExtent => minHeight;
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return SizedBox.expand(child: child);
-  }
-
-  @override
-  bool shouldRebuild(_StickyHeaderDelegate old) =>
-      maxHeight != old.maxHeight ||
-      minHeight != old.minHeight ||
-      child != old.child;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// GIG TILE  — Fiverr-style card
+// GIG TILE
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _GigTile extends StatelessWidget {
@@ -611,7 +531,6 @@ class _GigTile extends StatelessWidget {
     );
   }
 
-  // ── Cover ─────────────────────────────────────────────────────────────────
   Widget _buildCover() {
     if (gig.coverImageUrl.isEmpty) return const SizedBox.shrink();
     return ClipRRect(
@@ -634,7 +553,6 @@ class _GigTile extends StatelessWidget {
                   ),
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
           ),
-          // Featured badge
           if (gig.isFeatured)
             Positioned(
               top: 12,
@@ -667,7 +585,6 @@ class _GigTile extends StatelessWidget {
     );
   }
 
-  // ── Doctor row ────────────────────────────────────────────────────────────
   Widget _buildDoctorRow() {
     return Row(
       children: [
@@ -744,7 +661,6 @@ class _GigTile extends StatelessWidget {
     );
   }
 
-  // ── Gig title ─────────────────────────────────────────────────────────────
   Widget _buildTitle() => Text(
     gig.fullTitle,
     style: const TextStyle(
@@ -757,9 +673,6 @@ class _GigTile extends StatelessWidget {
     overflow: TextOverflow.ellipsis,
   );
 
-  
-
-  // ── Meta row: rating + orders ─────────────────────────────────────────────
   Widget _buildMetaRow() => Row(
     children: [
       if (gig.drRating > 0) ...[
@@ -794,7 +707,6 @@ class _GigTile extends StatelessWidget {
     ],
   );
 
-  // ── Type + category tags ──────────────────────────────────────────────────
   Widget _buildTypeTags() => Wrap(
     spacing: 6,
     runSpacing: 6,
@@ -830,7 +742,6 @@ class _GigTile extends StatelessWidget {
     ),
   );
 
-  // ── Packages row ──────────────────────────────────────────────────────────
   Widget _buildPackagesRow() {
     final pkgs = [
       (
@@ -900,7 +811,6 @@ class _GigTile extends StatelessWidget {
     );
   }
 
-  // ── Bottom: price + chat + book ───────────────────────────────────────────
   Widget _buildBottomRow() => Row(
     children: [
       Column(
@@ -922,8 +832,6 @@ class _GigTile extends StatelessWidget {
         ],
       ),
       const Spacer(),
-
-      // Chat
       GestureDetector(
         onTap: onChat,
         child: Container(
@@ -942,8 +850,6 @@ class _GigTile extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 8),
-
-      // Book Now
       GestureDetector(
         onTap: onBook,
         child: Container(
@@ -1026,7 +932,6 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image placeholder
               Container(
                 height: 175,
                 decoration: BoxDecoration(
@@ -1088,7 +993,6 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
   Widget _sh(double h, double w, {double r = 6}) => Container(
     height: h,
     width: w,
-    margin: const EdgeInsets.only(bottom: 0),
     decoration: BoxDecoration(
       color: AppColors.borderGray,
       borderRadius: BorderRadius.circular(r),

@@ -55,22 +55,18 @@ class GigFaq {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // GIG MODEL
-// No status — every document fetched is considered live.
-// drId is stored in every document for doctor-specific queries.
 // ══════════════════════════════════════════════════════════════════════════════
 
 class GigModel {
   final String gigId;
-  final String drId;           // doctor's Firebase Auth UID
+  final String drId;
 
-  // Doctor info — denormalized so no extra fetch needed
   final String drName;
   final String drSpecialty;
   final String drImageUrl;
   final double drRating;
   final bool   drIsVerified;
 
-  // Gig content
   final String       title;
   final String       description;
   final String       category;
@@ -80,28 +76,23 @@ class GigModel {
   final String       requirements;
   final List<GigFaq> faqs;
 
-  // Packages
   final GigPackage basicPackage;
   final GigPackage standardPackage;
   final GigPackage premiumPackage;
 
-  // Media
   final String       coverImageUrl;
   final List<String> galleryImageUrls;
   final String?      introVideoUrl;
 
-  // Credentials
   final bool hasPmdcUploaded;
   final bool hasDegreeUploaded;
 
-  // Stats
   final bool   isFeatured;
   final double rating;
   final int    totalReviews;
   final int    totalOrders;
   final int    totalViews;
 
-  // Timestamps
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? publishedAt;
@@ -140,11 +131,9 @@ class GigModel {
     this.publishedAt,
   });
 
-  // Convenience getters
   double get startingPrice => basicPackage.price;
   String get fullTitle     => 'I will ${title.trim()}';
 
-  // ── fromFirestore ─────────────────────────────────────────────────────────
   factory GigModel.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
 
@@ -164,37 +153,37 @@ class GigModel {
     }
 
     return GigModel(
-      gigId:              d['gigId']        as String? ?? doc.id,
-      drId:               d['drId']         as String? ?? '',
-      drName:             d['drName']       as String? ?? '',
-      drSpecialty:        d['drSpecialty']  as String? ?? '',
-      drImageUrl:         d['drImageUrl']   as String? ?? '',
-      drRating:           (d['drRating']    as num?)?.toDouble()  ?? 0.0,
-      drIsVerified:       d['drIsVerified'] as bool?   ?? false,
-      title:              d['title']        as String? ?? '',
-      description:        d['description']  as String? ?? '',
-      category:           d['category']     as String? ?? '',
-      subcategory:        d['subcategory']  as String? ?? '',
-      tags:               List<String>.from(d['tags']  as List? ?? []),
+      gigId:               d['gigId']        as String? ?? doc.id,
+      drId:                d['drId']         as String? ?? '',
+      drName:              d['drName']       as String? ?? '',
+      drSpecialty:         d['drSpecialty']  as String? ?? '',
+      drImageUrl:          d['drImageUrl']   as String? ?? '',
+      drRating:            (d['drRating']    as num?)?.toDouble()  ?? 0.0,
+      drIsVerified:        d['drIsVerified'] as bool?   ?? false,
+      title:               d['title']        as String? ?? '',
+      description:         d['description']  as String? ?? '',
+      category:            d['category']     as String? ?? '',
+      subcategory:         d['subcategory']  as String? ?? '',
+      tags:                List<String>.from(d['tags']  as List? ?? []),
       consultationTypeStr: d['consultationTypeStr'] as String? ?? '',
-      requirements:       d['requirements'] as String? ?? '',
-      faqs:               _parseFaqs(),
-      basicPackage:       _pkg('basicPackage'),
-      standardPackage:    _pkg('standardPackage'),
-      premiumPackage:     _pkg('premiumPackage'),
-      coverImageUrl:      d['coverImageUrl']   as String? ?? '',
-      galleryImageUrls:   List<String>.from(d['galleryImageUrls'] as List? ?? []),
-      introVideoUrl:      d['introVideoUrl']   as String?,
-      hasPmdcUploaded:    d['hasPmdcUploaded']   as bool? ?? false,
-      hasDegreeUploaded:  d['hasDegreeUploaded'] as bool? ?? false,
-      isFeatured:   d['isFeatured']   as bool? ?? false,
-      rating:       (d['rating']      as num?)?.toDouble() ?? 0.0,
-      totalReviews: (d['totalReviews'] as num?)?.toInt()   ?? 0,
-      totalOrders:  (d['totalOrders']  as num?)?.toInt()   ?? 0,
-      totalViews:   (d['totalViews']   as num?)?.toInt()   ?? 0,
-      createdAt:    _ts(d['createdAt']),
-      updatedAt:    _ts(d['updatedAt']),
-      publishedAt:  _ts(d['publishedAt']),
+      requirements:        d['requirements'] as String? ?? '',
+      faqs:                _parseFaqs(),
+      basicPackage:        _pkg('basicPackage'),
+      standardPackage:     _pkg('standardPackage'),
+      premiumPackage:      _pkg('premiumPackage'),
+      coverImageUrl:       d['coverImageUrl']    as String? ?? '',
+      galleryImageUrls:    List<String>.from(d['galleryImageUrls'] as List? ?? []),
+      introVideoUrl:       d['introVideoUrl']    as String?,
+      hasPmdcUploaded:     d['hasPmdcUploaded']  as bool? ?? false,
+      hasDegreeUploaded:   d['hasDegreeUploaded'] as bool? ?? false,
+      isFeatured:    d['isFeatured']    as bool? ?? false,
+      rating:        (d['rating']       as num?)?.toDouble() ?? 0.0,
+      totalReviews:  (d['totalReviews'] as num?)?.toInt()   ?? 0,
+      totalOrders:   (d['totalOrders']  as num?)?.toInt()   ?? 0,
+      totalViews:    (d['totalViews']   as num?)?.toInt()   ?? 0,
+      createdAt:     _ts(d['createdAt']),
+      updatedAt:     _ts(d['updatedAt']),
+      publishedAt:   _ts(d['publishedAt']),
     );
   }
 
@@ -219,6 +208,9 @@ class GigModel {
 // ══════════════════════════════════════════════════════════════════════════════
 // PATIENT MODEL
 // Collection: 'patients'
+// Firestore fields saved by patient_auth_service.dart:
+//   'name'             → fullName
+//   'profileImageUrl'  → imageUrl
 // ══════════════════════════════════════════════════════════════════════════════
 
 class PatientModel {
@@ -246,7 +238,7 @@ class PatientModel {
     this.createdAt,
   });
 
-  // First name for greeting
+  // First name for greeting in header
   String get firstName {
     final parts = fullName.trim().split(' ');
     return parts.isNotEmpty ? parts.first : fullName;
@@ -255,16 +247,18 @@ class PatientModel {
   factory PatientModel.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
     return PatientModel(
-      uid:          doc.id,
-      fullName:     d['fullName']    as String? ?? 'Patient',
-      email:        d['email']       as String? ?? '',
-      phone:        d['phone']       as String?,
-      imageUrl:     d['imageUrl']    as String?,
-      gender:       d['gender']      as String?,
-      dateOfBirth:  d['dateOfBirth'] as String?,
-      bloodGroup:   d['bloodGroup']  as String?,
-      totalOrders:  (d['totalOrders'] as num?)?.toInt() ?? 0,
-      createdAt:    _tsP(d['createdAt']),
+      uid:      doc.id,
+      // 'name' is what patient_auth_service saves; 'fullName' is the fallback
+      fullName: (d['name'] ?? d['fullName'] ?? 'Patient') as String,
+      email:    d['email']       as String? ?? '',
+      phone:    d['phone']       as String?,
+      // 'profileImageUrl' is what patient_auth_service saves; 'imageUrl' is fallback
+      imageUrl: (d['profileImageUrl'] ?? d['imageUrl']) as String?,
+      gender:      d['gender']      as String?,
+      dateOfBirth: d['dateOfBirth'] as String?,
+      bloodGroup:  d['bloodGroup']  as String?,
+      totalOrders: (d['totalOrders'] as num?)?.toInt() ?? 0,
+      createdAt:   _tsP(d['createdAt']),
     );
   }
 
