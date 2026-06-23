@@ -8,6 +8,8 @@ import 'package:bookdr/core/theme/app_colors.dart';
 
 import '../../models/dr_model.dart';
 import '../../providers/homegig_provider.dart';
+import '../../providers/gig_details_provider.dart';
+import '../details_screens/gigs_details_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -78,6 +80,20 @@ class _HomeViewState extends State<HomeView> {
     _searchCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Navigate to gig details ───────────────────────────────────────────────
+  void _openGigDetails(GigModel gig) {
+    HapticFeedback.selectionClick();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => GigDetailsProvider(),
+          child: GigDetailsView(gig: gig),
+        ),
+      ),
+    );
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -463,6 +479,7 @@ class _HomeViewState extends State<HomeView> {
           gig: prov.gigs[i],
           typeColor: _typeColor(prov.gigs[i].consultationTypeStr),
           typeIcon: _typeIcon(prov.gigs[i].consultationTypeStr),
+          onTapCard: () => _openGigDetails(prov.gigs[i]),
           onChat: () => HapticFeedback.selectionClick(),
           onBook: () => HapticFeedback.mediumImpact(),
         ),
@@ -480,6 +497,7 @@ class _GigTile extends StatelessWidget {
   final GigModel gig;
   final Color typeColor;
   final IconData typeIcon;
+  final VoidCallback onTapCard;
   final VoidCallback onChat;
   final VoidCallback onBook;
 
@@ -487,46 +505,52 @@ class _GigTile extends StatelessWidget {
     required this.gig,
     required this.typeColor,
     required this.typeIcon,
+    required this.onTapCard,
     required this.onChat,
     required this.onBook,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderGray),
-        boxShadow: AppColors.subtleShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCover(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDoctorRow(),
-                const SizedBox(height: 10),
-                _buildTitle(),
-                const SizedBox(height: 5),
-                _buildMetaRow(),
-                const SizedBox(height: 10),
-                _buildTypeTags(),
-                const SizedBox(height: 12),
-                _buildPackagesRow(),
-                const SizedBox(height: 12),
-                Divider(color: AppColors.borderGray, thickness: 0.8, height: 1),
-                const SizedBox(height: 12),
-                _buildBottomRow(),
-              ],
+    return GestureDetector(
+      onTap: onTapCard,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.borderGray),
+          boxShadow: AppColors.subtleShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCover(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDoctorRow(),
+                  const SizedBox(height: 10),
+                  _buildTitle(),
+                  const SizedBox(height: 5),
+                  _buildMetaRow(),
+                  const SizedBox(height: 10),
+                  _buildTypeTags(),
+                  const SizedBox(height: 12),
+                  _buildPackagesRow(),
+                  const SizedBox(height: 12),
+                  Divider(
+                      color: AppColors.borderGray, thickness: 0.8, height: 1),
+                  const SizedBox(height: 12),
+                  _buildBottomRow(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

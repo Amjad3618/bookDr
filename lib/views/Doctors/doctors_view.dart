@@ -12,8 +12,6 @@ import 'package:bookdr/core/theme/app_colors.dart';
 import '../../models/fetch_de_model.dart';
 import '../../providers/fetch_dr_provider.dart';
 
-
-
 class DoctorsView extends StatefulWidget {
   const DoctorsView({super.key});
 
@@ -95,20 +93,26 @@ class _DoctorsViewState extends State<DoctorsView> {
       child: Row(
         children: [
           const SizedBox(width: 14),
-          const Icon(Icons.search_rounded,
-            color: AppColors.textSecondary, size: 20),
+          const Icon(
+            Icons.search_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchCtrl,
               style: const TextStyle(
-                fontSize: 14, color: AppColors.textPrimary),
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
               onChanged: prov.onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search doctors, specialties…',
                 hintStyle: TextStyle(
                   color: AppColors.textSecondary.withOpacity(0.55),
-                  fontSize: 13),
+                  fontSize: 13,
+                ),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -122,8 +126,11 @@ class _DoctorsViewState extends State<DoctorsView> {
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.close_rounded,
-                  color: AppColors.textSecondary, size: 18),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: AppColors.textSecondary,
+                  size: 18,
+                ),
               ),
             )
           else
@@ -159,11 +166,11 @@ class _DoctorsViewState extends State<DoctorsView> {
 
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics()),
+        parent: BouncingScrollPhysics(),
+      ),
       padding: const EdgeInsets.all(16),
       itemCount: prov.doctors.length,
-      itemBuilder: (context, index) =>
-          _DoctorCard(doctor: prov.doctors[index]),
+      itemBuilder: (context, index) => _DoctorCard(doctor: prov.doctors[index]),
     );
   }
 }
@@ -198,7 +205,8 @@ class _DoctorCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   color: AppColors.primaryExtraLight,
-                  image: doctor.profileImageUrl != null &&
+                  image:
+                      doctor.profileImageUrl != null &&
                           doctor.profileImageUrl!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(doctor.profileImageUrl!),
@@ -206,10 +214,14 @@ class _DoctorCard extends StatelessWidget {
                         )
                       : null,
                 ),
-                child: doctor.profileImageUrl == null ||
+                child:
+                    doctor.profileImageUrl == null ||
                         doctor.profileImageUrl!.isEmpty
-                    ? const Icon(Icons.person_rounded,
-                        color: AppColors.primary, size: 34)
+                    ? const Icon(
+                        Icons.person_rounded,
+                        color: AppColors.primary,
+                        size: 34,
+                      )
                     : null,
               ),
               if (doctor.isOnline)
@@ -250,8 +262,11 @@ class _DoctorCard extends StatelessWidget {
                     ),
                     if (doctor.isVerified) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.verified_rounded,
-                        color: Color(0xFF3498DB), size: 15),
+                      const Icon(
+                        Icons.verified_rounded,
+                        color: Color(0xFF3498DB),
+                        size: 15,
+                      ),
                     ],
                   ],
                 ),
@@ -270,24 +285,34 @@ class _DoctorCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today_rounded,
-                      size: 13, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 13,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${doctor.yearsOfExperience} yrs',
                       style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary),
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.star_rounded,
-                      size: 13, color: Color(0xFFF59E0B)),
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 13,
+                      color: Color(0xFFF59E0B),
+                    ),
                     const SizedBox(width: 3),
                     Text(
                       doctor.rating > 0
                           ? doctor.rating.toStringAsFixed(1)
                           : 'New',
                       style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary),
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -303,8 +328,7 @@ class _DoctorCard extends StatelessWidget {
               // TODO: navigate to doctor profile / booking using doctor.drId
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
               decoration: BoxDecoration(
                 gradient: AppColors.orangeGradient,
                 borderRadius: BorderRadius.circular(12),
@@ -351,10 +375,13 @@ class _DoctorCardSkeletonState extends State<_DoctorCardSkeleton>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1100),
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 0.9).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(
+      begin: 0.4,
+      end: 0.9,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -407,7 +434,9 @@ class _DoctorCardSkeletonState extends State<_DoctorCardSkeleton>
     width: w,
     decoration: BoxDecoration(
       color: AppColors.borderGray,
-      borderRadius: BorderRadius.circular(r)));
+      borderRadius: BorderRadius.circular(r),
+    ),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -422,34 +451,56 @@ class _ErrorRetry extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
     physics: const AlwaysScrollableScrollPhysics(
-      parent: BouncingScrollPhysics()),
+      parent: BouncingScrollPhysics(),
+    ),
     children: [
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
         child: Column(
           children: [
             Container(
-              width: 72, height: 72,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                color: AppColors.errorLight, shape: BoxShape.circle),
-              child: const Icon(Icons.wifi_off_rounded,
-                color: AppColors.error, size: 36)),
+                color: AppColors.errorLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                color: AppColors.error,
+                size: 36,
+              ),
+            ),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center,
+            Text(
+              message,
+              textAlign: TextAlign.center,
               style: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: onRetry,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 28, vertical: 12),
+                  horizontal: 28,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: AppColors.orangeGradient,
-                  borderRadius: BorderRadius.circular(12)),
-                child: const Text('Try again', style: TextStyle(
-                  color: Colors.white, fontSize: 13,
-                  fontWeight: FontWeight.bold)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Try again',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
@@ -469,24 +520,37 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
     physics: const AlwaysScrollableScrollPhysics(
-      parent: BouncingScrollPhysics()),
+      parent: BouncingScrollPhysics(),
+    ),
     children: const [
       Padding(
         padding: EdgeInsets.symmetric(vertical: 70, horizontal: 32),
         child: Column(
           children: [
-            Icon(Icons.medical_services_outlined,
-              color: AppColors.textSecondary, size: 52),
+            Icon(
+              Icons.medical_services_outlined,
+              color: AppColors.textSecondary,
+              size: 52,
+            ),
             SizedBox(height: 14),
-            Text('No doctors found', style: TextStyle(
-              fontSize: 15, fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary)),
+            Text(
+              'No doctors found',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
             SizedBox(height: 6),
             Text(
               'Try a different search or check back later.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
           ],
         ),
       ),
