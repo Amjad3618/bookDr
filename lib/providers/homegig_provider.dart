@@ -15,7 +15,6 @@ class HomeGigProvider extends ChangeNotifier {
 
   final PatientGigService _service;
 
-  // ── Gig state ─────────────────────────────────────────────────────────────
   GigLoadState   _state            = GigLoadState.idle;
   List<GigModel> _allGigs          = [];
   List<GigModel> _filteredGigs     = [];
@@ -24,42 +23,37 @@ class HomeGigProvider extends ChangeNotifier {
   String         _searchQuery      = '';
   String?        _errorMessage;
 
-  // ── Patient profile state ─────────────────────────────────────────────────
   PatientModel?  _patient;
-  bool           _patientLoading = false;
+  bool           _patientLoading   = false;
 
-  StreamSubscription<List<GigModel>>?   _gigsSub;
-  StreamSubscription<PatientModel?>?    _patientSub;
+  StreamSubscription<List<GigModel>>? _gigsSub;
+  StreamSubscription<PatientModel?>?  _patientSub;
 
-  // ── Getters ───────────────────────────────────────────────────────────────
-  GigLoadState   get state            => _state;
-  List<GigModel> get gigs             => _filteredGigs;
-  List<String>   get categories       => _categories;
-  String         get selectedCategory => _selectedCategory;
-  String         get searchQuery      => _searchQuery;
-  String?        get errorMessage     => _errorMessage;
-  bool           get isLoading        => _state == GigLoadState.loading;
-  bool           get hasError         => _state == GigLoadState.error;
-
-  PatientModel?  get patient         => _patient;
-  bool           get patientLoading  => _patientLoading;
-  String         get patientName     => _patient?.fullName   ?? '';
-  String         get patientFirstName => _patient?.firstName ?? 'there';
-  String?        get patientImageUrl => _patient?.imageUrl;
+  GigLoadState   get state             => _state;
+  List<GigModel> get gigs              => _filteredGigs;
+  List<String>   get categories        => _categories;
+  String         get selectedCategory  => _selectedCategory;
+  String         get searchQuery       => _searchQuery;
+  String?        get errorMessage      => _errorMessage;
+  bool           get isLoading         => _state == GigLoadState.loading;
+  bool           get hasError          => _state == GigLoadState.error;
+  PatientModel?  get patient           => _patient;
+  bool           get patientLoading    => _patientLoading;
+  String         get patientName       => _patient?.fullName   ?? '';
+  String         get patientFirstName  => _patient?.firstName  ?? 'there';
+  String?        get patientImageUrl   => _patient?.imageUrl;
 
   // ══════════════════════════════════════════════════════════════════════════
-  // INIT — called once from HomeView.initState
+  // INIT
+  // FIX: loadGigs() now builds categories from the same response —
+  // no extra Firestore call for categories.
+  // Patient listener is fire-and-forget (non-blocking).
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> initialise() async {
-    _listenToPatient();   // real-time patient profile
-    await loadGigs();     // load all gigs
-    _loadCategories();    // non-blocking category list
+    _listenToPatient();   // non-blocking real-time listener
+    await loadGigs();     // single fetch, builds categories internally
   }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // PATIENT PROFILE — real-time listener from 'patients' collection
-  // ══════════════════════════════════════════════════════════════════════════
 
   void _listenToPatient() {
     _patientSub?.cancel();
@@ -80,13 +74,15 @@ class HomeGigProvider extends ChangeNotifier {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // LOAD ALL GIGS — no status filter
+  // LOAD GIGS
+  // FIX: Categories are built from the same list — no second network call.
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> loadGigs() async {
     _setState(GigLoadState.loading);
     try {
-      _allGigs = await _service.fetchAllGigs();
+      _allGigs    = await _service.fetchAllGigs();
+      _categories = _service.buildCategoriesFromGigs(_allGigs);
       _applyFilters();
       _setState(GigLoadState.success);
     } catch (e) {
@@ -95,13 +91,13 @@ class HomeGigProvider extends ChangeNotifier {
     }
   }
 
-  // ── Real-time stream (optional alternative to loadGigs) ───────────────────
   void subscribeToGigs() {
     _gigsSub?.cancel();
     _setState(GigLoadState.loading);
     _gigsSub = _service.streamAllGigs().listen(
       (gigs) {
-        _allGigs = gigs;
+        _allGigs    = gigs;
+        _categories = _service.buildCategoriesFromGigs(gigs);
         _applyFilters();
         _setState(GigLoadState.success);
       },
@@ -117,34 +113,12 @@ class HomeGigProvider extends ChangeNotifier {
     _gigsSub = null;
   }
 
-  // ── Categories ────────────────────────────────────────────────────────────
-  Future<void> _loadCategories() async {
-    try {
-      _categories = await _service.fetchCategories();
-      notifyListeners();
-    } catch (_) {
-      // Build client-side from loaded gigs as fallback
-      if (_allGigs.isNotEmpty) {
-        final cats = _allGigs
-            .map((g) => g.category)
-            .where((c) => c.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-        _categories = ['All', ...cats];
-        notifyListeners();
-      }
-    }
-  }
-
-  // ── Search ────────────────────────────────────────────────────────────────
   void onSearchChanged(String query) {
     _searchQuery = query;
     _applyFilters();
     notifyListeners();
   }
 
-  // ── Category filter ───────────────────────────────────────────────────────
   void selectCategory(String category) {
     if (_selectedCategory == category) return;
     _selectedCategory = category;
@@ -152,7 +126,6 @@ class HomeGigProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
   void resetFilters() {
     _searchQuery      = '';
     _selectedCategory = 'All';
@@ -165,14 +138,9 @@ class HomeGigProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // PRIVATE HELPERS
-  // ══════════════════════════════════════════════════════════════════════════
-
   void _applyFilters() {
     List<GigModel> result = List.from(_allGigs);
 
-    // Category filter
     if (_selectedCategory != 'All') {
       result = result
           .where((g) =>
@@ -180,17 +148,16 @@ class HomeGigProvider extends ChangeNotifier {
           .toList();
     }
 
-    // Search filter
     if (_searchQuery.trim().isNotEmpty) {
       final q = _searchQuery.trim().toLowerCase();
       result = result
           .where((g) =>
-              g.title.toLowerCase().contains(q)        ||
-              g.drName.toLowerCase().contains(q)       ||
-              g.drSpecialty.toLowerCase().contains(q)  ||
-              g.category.toLowerCase().contains(q)     ||
-              g.subcategory.toLowerCase().contains(q)  ||
-              g.description.toLowerCase().contains(q)  ||
+              g.title.toLowerCase().contains(q)       ||
+              g.drName.toLowerCase().contains(q)      ||
+              g.drSpecialty.toLowerCase().contains(q) ||
+              g.category.toLowerCase().contains(q)    ||
+              g.subcategory.toLowerCase().contains(q) ||
+              g.description.toLowerCase().contains(q) ||
               g.tags.any((t) => t.toLowerCase().contains(q)))
           .toList();
     }

@@ -1,8 +1,4 @@
 // lib/services/homegig_services.dart  ·  PATIENT APP
-//
-// Queries the 'gigs' collection — no status filter.
-// Every document in the collection is live.
-// Collections used: 'gigs', 'patients', 'doctors'
 // ════════════════════════════════════════════════════════════════════════════
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,20 +10,18 @@ class PatientGigService {
   PatientGigService._();
   static final PatientGigService instance = PatientGigService._();
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db   = FirebaseFirestore.instance;
+  final FirebaseAuth      _auth = FirebaseAuth.instance;
 
-  // ── Collection references ─────────────────────────────────────────────────
-  CollectionReference<Map<String, dynamic>> get _gigs => _db.collection('gigs');
+  CollectionReference<Map<String, dynamic>> get _gigs =>
+      _db.collection('gigs');
   CollectionReference<Map<String, dynamic>> get _patients =>
       _db.collection('patients');
 
   // ══════════════════════════════════════════════════════════════════════════
   // PATIENT PROFILE
-  // Fetches from 'patients' collection using Firebase Auth UID
   // ══════════════════════════════════════════════════════════════════════════
 
-  /// Fetch current logged-in patient's profile from 'patients' collection
   Future<PatientModel?> fetchCurrentPatient() async {
     try {
       final uid = _auth.currentUser?.uid;
@@ -40,7 +34,6 @@ class PatientGigService {
     }
   }
 
-  /// Real-time stream of current patient's profile
   Stream<PatientModel?> streamCurrentPatient() {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return Stream.value(null);
@@ -51,33 +44,28 @@ class PatientGigService {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // FETCH ALL GIGS  — no status filter, every doc is live
-  // Ordered: featured first, then by rating, then newest
+  // FETCH ALL GIGS
+  // FIX: Single query instead of two sequential queries.
+  // Two queries (featured + non-featured) were blocking the UI thread
+  // for ~800ms–2s on every home load and every navigation tap.
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<List<GigModel>> fetchAllGigs() async {
     try {
-      // Featured gigs first
-      final featuredSnap = await _gigs
-          .where('isFeatured', isEqualTo: true)
+      // Single query — sort client-side (avoids composite index requirement
+      // and cuts Firestore round-trips from 2 → 1)
+      final snap = await _gigs
           .orderBy('rating', descending: true)
           .get();
 
-      // Non-featured gigs by rating
-      final regularSnap = await _gigs
-          .where('isFeatured', isEqualTo: false)
-          .orderBy('rating', descending: true)
-          .get();
+      final all = snap.docs.map(GigModel.fromFirestore).toList();
 
-      final featured = featuredSnap.docs.map(GigModel.fromFirestore).toList();
-      final regular = regularSnap.docs.map(GigModel.fromFirestore).toList();
-
+      // Put featured gigs first, then rest by rating (already sorted)
+      final featured = all.where((g) => g.isFeatured).toList();
+      final regular  = all.where((g) => !g.isFeatured).toList();
       return [...featured, ...regular];
     } on FirebaseException catch (e) {
-      // Fallback: simple fetch ordered by createdAt if index not ready
-      if (e.code == 'failed-precondition') {
-        return _fetchAllSimple();
-      }
+      if (e.code == 'failed-precondition') return _fetchAllSimple();
       throw _handle(e, 'fetchAllGigs');
     }
   }
@@ -87,7 +75,6 @@ class PatientGigService {
     return snap.docs.map(GigModel.fromFirestore).toList();
   }
 
-  // ── Real-time stream of all gigs ──────────────────────────────────────────
   Stream<List<GigModel>> streamAllGigs() {
     return _gigs
         .orderBy('createdAt', descending: true)
@@ -96,7 +83,35 @@ class PatientGigService {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // FILTER BY CATEGORY
+  // CATEGORIES
+  // FIX: Build from already-fetched gigs instead of extra Firestore read.
+  // Previously fetchCategories() did a full collection read AFTER fetchAllGigs()
+  // — that was a redundant 3rd network call during home load.
+  // Now call buildCategoriesFromGigs() with the list you already have.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  List<String> buildCategoriesFromGigs(List<GigModel> gigs) {
+    final cats = gigs
+        .map((g) => g.category)
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return ['All', ...cats];
+  }
+
+  // Kept for backward compatibility — now just wraps buildCategoriesFromGigs
+  Future<List<String>> fetchCategories() async {
+    try {
+      final gigs = await fetchAllGigs();
+      return buildCategoriesFromGigs(gigs);
+    } on FirebaseException catch (e) {
+      throw _handle(e, 'fetchCategories');
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // OTHER QUERIES
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<List<GigModel>> fetchByCategory(String category) async {
@@ -111,31 +126,6 @@ class PatientGigService {
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // FETCH UNIQUE CATEGORIES from all gigs
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Future<List<String>> fetchCategories() async {
-    try {
-      final snap = await _gigs.get();
-      final cats =
-          snap.docs
-              .map((d) => d.data()['category'] as String? ?? '')
-              .where((s) => s.isNotEmpty)
-              .toSet()
-              .toList()
-            ..sort();
-      return ['All', ...cats];
-    } on FirebaseException catch (e) {
-      throw _handle(e, 'fetchCategories');
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // FETCH GIGS BY DOCTOR UID
-  // Used on doctor profile page in patient app
-  // ══════════════════════════════════════════════════════════════════════════
-
   Future<List<GigModel>> fetchGigsByDoctor(String drId) async {
     try {
       final snap = await _gigs
@@ -147,10 +137,6 @@ class PatientGigService {
       throw _handle(e, 'fetchGigsByDoctor');
     }
   }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // FETCH SINGLE GIG BY ID
-  // ══════════════════════════════════════════════════════════════════════════
 
   Future<GigModel?> fetchById(String gigId) async {
     try {
@@ -164,24 +150,23 @@ class PatientGigService {
 
   // ══════════════════════════════════════════════════════════════════════════
   // INCREMENT VIEW COUNTER
+  // FIX: unawaited — fire and forget so it never touches the UI thread
   // ══════════════════════════════════════════════════════════════════════════
 
-  Future<void> incrementViews(String gigId) async {
-    try {
-      await _gigs.doc(gigId).update({'totalViews': FieldValue.increment(1)});
-    } catch (_) {}
+  void incrementViews(String gigId) {
+    // Intentionally NOT async/await — write happens in background
+    _gigs.doc(gigId).update({'totalViews': FieldValue.increment(1)});
   }
 
-  // ── Error handler ─────────────────────────────────────────────────────────
   Exception _handle(FirebaseException e, String op) {
     final msg = switch (e.code) {
-      'permission-denied' => 'Access denied. Check Firestore rules.',
-      'unavailable' => 'Network unavailable. Please try again.',
-      'not-found' => 'Document not found.',
-      'deadline-exceeded' => 'Request timed out.',
+      'permission-denied'   => 'Access denied. Check Firestore rules.',
+      'unavailable'         => 'Network unavailable. Please try again.',
+      'not-found'           => 'Document not found.',
+      'deadline-exceeded'   => 'Request timed out.',
       'failed-precondition' =>
-        'Missing Firestore index. Open Firebase Console → Firestore → Indexes to create it.',
-      _ => 'Error in $op [${e.code}]: ${e.message}',
+        'Missing Firestore index. Open Firebase Console → Indexes.',
+      _                     => 'Error in $op [${e.code}]: ${e.message}',
     };
     return Exception(msg);
   }

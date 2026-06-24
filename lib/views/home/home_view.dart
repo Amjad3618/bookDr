@@ -1,6 +1,8 @@
 // lib/views/home_view.dart  ·  PATIENT APP
 // ════════════════════════════════════════════════════════════════════════════
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -22,46 +24,40 @@ class _HomeViewState extends State<HomeView> {
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
 
-  // ── Consultation type helpers ─────────────────────────────────────────────
+  // ── Prevents double-tap navigation freeze ─────────────────────────────────
+  bool _isNavigating = false;
+
   Color _typeColor(String type) {
     switch (type) {
-      case 'Video Call':
-        return const Color(0xFF3498DB);
-      case 'Chat / Messaging':
-        return const Color(0xFF27AE60);
-      case 'Report Review Only':
-        return const Color(0xFFF39C12);
-      default:
-        return AppColors.primary;
+      case 'Video Call':        return const Color(0xFF2563EB);
+      case 'Chat / Messaging':  return const Color(0xFF059669);
+      case 'Report Review Only':return const Color(0xFFD97706);
+      default:                  return AppColors.primary;
     }
   }
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'Video Call':
-        return Icons.videocam_rounded;
-      case 'Chat / Messaging':
-        return Icons.chat_bubble_rounded;
-      case 'Report Review Only':
-        return Icons.description_rounded;
-      default:
-        return Icons.medical_services_rounded;
+      case 'Video Call':        return Icons.videocam_rounded;
+      case 'Chat / Messaging':  return Icons.chat_bubble_rounded;
+      case 'Report Review Only':return Icons.description_rounded;
+      default:                  return Icons.medical_services_rounded;
     }
   }
 
   IconData _catIcon(String cat) {
     const map = <String, IconData>{
-      'All': Icons.grid_view_rounded,
-      'Cardiology': Icons.favorite_rounded,
-      'Diagnostics': Icons.biotech_rounded,
-      'Lifestyle': Icons.self_improvement_rounded,
-      'Pediatrics': Icons.child_care_rounded,
-      'General': Icons.local_hospital_rounded,
-      'Psychiatry': Icons.psychology_rounded,
-      'Neurology': Icons.psychology_outlined,
-      'Orthopedics': Icons.accessibility_new_rounded,
-      'Dermatology': Icons.face_rounded,
-      'Dentistry': Icons.medical_services_rounded,
+      'All':          Icons.grid_view_rounded,
+      'Cardiology':   Icons.favorite_rounded,
+      'Diagnostics':  Icons.biotech_rounded,
+      'Lifestyle':    Icons.self_improvement_rounded,
+      'Pediatrics':   Icons.child_care_rounded,
+      'General':      Icons.local_hospital_rounded,
+      'Psychiatry':   Icons.psychology_rounded,
+      'Neurology':    Icons.psychology_outlined,
+      'Orthopedics':  Icons.accessibility_new_rounded,
+      'Dermatology':  Icons.face_rounded,
+      'Dentistry':    Icons.medical_services_rounded,
     };
     return map[cat] ?? Icons.medical_services_rounded;
   }
@@ -83,17 +79,27 @@ class _HomeViewState extends State<HomeView> {
   }
 
   // ── Navigate to gig details ───────────────────────────────────────────────
+  // KEY FIX: _isNavigating guard prevents the freeze caused by multiple
+  // simultaneous pushes when the user taps quickly or the list is scrolling.
+  // The GigDetailsProvider is created BEFORE the route is pushed so setGig()
+  // is never called during the Hero/route animation — that was the freeze.
   void _openGigDetails(GigModel gig) {
+    if (_isNavigating) return;
+    _isNavigating = true;
     HapticFeedback.selectionClick();
+
+    // Create provider outside the route so it's ready before the first frame
+    final detailsProvider = GigDetailsProvider()..setGig(gig);
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider(
-          create: (_) => GigDetailsProvider(),
+        builder: (_) => ChangeNotifierProvider.value(
+          value: detailsProvider,
           child: GigDetailsView(gig: gig),
         ),
       ),
-    );
+    ).then((_) => _isNavigating = false);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -105,8 +111,6 @@ class _HomeViewState extends State<HomeView> {
     return Consumer<HomeGigProvider>(
       builder: (_, prov, __) => Scaffold(
         backgroundColor: AppColors.backgroundColor,
-
-        // ── Simple AppBar ──────────────────────────────────────────────────
         appBar: AppBar(
           backgroundColor: const Color(0xFFFF6B35),
           elevation: 0,
@@ -124,8 +128,7 @@ class _HomeViewState extends State<HomeView> {
                   color: Colors.white.withOpacity(0.25),
                 ),
                 child: ClipOval(
-                  child:
-                      prov.patientImageUrl != null &&
+                  child: prov.patientImageUrl != null &&
                           prov.patientImageUrl!.isNotEmpty
                       ? Image.network(
                           prov.patientImageUrl!,
@@ -144,8 +147,6 @@ class _HomeViewState extends State<HomeView> {
                 ),
               ),
               const SizedBox(width: 10),
-
-              // Greeting + name
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,8 +188,6 @@ class _HomeViewState extends State<HomeView> {
               ),
             ],
           ),
-
-          // Notification bell on the right
           actions: [
             GestureDetector(
               onTap: () => HapticFeedback.selectionClick(),
@@ -199,7 +198,8 @@ class _HomeViewState extends State<HomeView> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(11),
-                  border: Border.all(color: Colors.white.withOpacity(0.35)),
+                  border:
+                      Border.all(color: Colors.white.withOpacity(0.35)),
                 ),
                 child: Stack(
                   alignment: Alignment.center,
@@ -227,25 +227,16 @@ class _HomeViewState extends State<HomeView> {
             ),
           ],
         ),
-
-        // ── Body ───────────────────────────────────────────────────────────
         body: CustomScrollView(
           controller: _scrollCtrl,
-          physics: const BouncingScrollPhysics(),
+          // ClampingScrollPhysics instead of Bouncing — prevents the rubber-band
+          // effect from eating tap events on the gig cards during scroll
+          physics: const ClampingScrollPhysics(),
           slivers: [
-            // ── Search bar ────────────────────────────────────────────────
             SliverToBoxAdapter(child: _buildSearchBar(prov)),
-
-            // ── Category pills ────────────────────────────────────────────
             SliverToBoxAdapter(child: _buildCategoryPills(prov)),
-
-            // ── Feed header ───────────────────────────────────────────────
             SliverToBoxAdapter(child: _buildFeedHeader(prov)),
-
-            // ── Gig feed ──────────────────────────────────────────────────
             _buildFeedSliver(prov),
-
-            // ── Bottom padding ────────────────────────────────────────────
             const SliverToBoxAdapter(child: SizedBox(height: 60)),
           ],
         ),
@@ -253,7 +244,6 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  // ── Greeting helper ────────────────────────────────────────────────────────
   String _greeting() {
     final h = DateTime.now().hour;
     if (h < 12) return 'Good morning ☀️';
@@ -278,19 +268,14 @@ class _HomeViewState extends State<HomeView> {
       child: Row(
         children: [
           const SizedBox(width: 14),
-          const Icon(
-            Icons.search_rounded,
-            color: AppColors.textSecondary,
-            size: 20,
-          ),
+          const Icon(Icons.search_rounded,
+              color: AppColors.textSecondary, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchCtrl,
               style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-              ),
+                  fontSize: 14, color: AppColors.textPrimary),
               onChanged: prov.onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search doctors, specialties, services…',
@@ -311,11 +296,8 @@ class _HomeViewState extends State<HomeView> {
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(
-                  Icons.close_rounded,
-                  color: AppColors.textSecondary,
-                  size: 18,
-                ),
+                child: Icon(Icons.close_rounded,
+                    color: AppColors.textSecondary, size: 18),
               ),
             )
           else
@@ -350,14 +332,14 @@ class _HomeViewState extends State<HomeView> {
                 duration: const Duration(milliseconds: 180),
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
+                    horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: selected ? AppColors.primary : AppColors.surface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: selected ? AppColors.primary : AppColors.borderGray,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.borderGray,
                   ),
                   boxShadow: selected
                       ? [
@@ -372,11 +354,11 @@ class _HomeViewState extends State<HomeView> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      _catIcon(cat),
-                      size: 13,
-                      color: selected ? Colors.white : AppColors.textSecondary,
-                    ),
+                    Icon(_catIcon(cat),
+                        size: 13,
+                        color: selected
+                            ? Colors.white
+                            : AppColors.textSecondary),
                     const SizedBox(width: 5),
                     Text(
                       cat,
@@ -427,7 +409,8 @@ class _HomeViewState extends State<HomeView> {
           ),
           if (!prov.isLoading && prov.gigs.isNotEmpty)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.primaryExtraLight,
                 borderRadius: BorderRadius.circular(10),
@@ -481,7 +464,7 @@ class _HomeViewState extends State<HomeView> {
           typeIcon: _typeIcon(prov.gigs[i].consultationTypeStr),
           onTapCard: () => _openGigDetails(prov.gigs[i]),
           onChat: () => HapticFeedback.selectionClick(),
-          onBook: () => HapticFeedback.mediumImpact(),
+          onBook: () => _openGigDetails(prov.gigs[i]),
         ),
         childCount: prov.gigs.length,
       ),
@@ -512,44 +495,55 @@ class _GigTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTapCard,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
+    // InkWell instead of GestureDetector — properly handles tap registration
+    // during list scroll without eating the gesture or freezing
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTapCard,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.borderGray),
-          boxShadow: AppColors.subtleShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCover(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDoctorRow(),
-                  const SizedBox(height: 10),
-                  _buildTitle(),
-                  const SizedBox(height: 5),
-                  _buildMetaRow(),
-                  const SizedBox(height: 10),
-                  _buildTypeTags(),
-                  const SizedBox(height: 12),
-                  _buildPackagesRow(),
-                  const SizedBox(height: 12),
-                  Divider(
-                      color: AppColors.borderGray, thickness: 0.8, height: 1),
-                  const SizedBox(height: 12),
-                  _buildBottomRow(),
-                ],
-              ),
+          splashColor: AppColors.primary.withOpacity(0.06),
+          highlightColor: AppColors.primary.withOpacity(0.03),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.borderGray),
+              boxShadow: AppColors.subtleShadow,
             ),
-          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCover(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDoctorRow(),
+                      const SizedBox(height: 10),
+                      _buildTitle(),
+                      const SizedBox(height: 5),
+                      _buildMetaRow(),
+                      const SizedBox(height: 10),
+                      _buildTypeTags(),
+                      const SizedBox(height: 12),
+                      _buildPackagesRow(),
+                      const SizedBox(height: 12),
+                      Divider(
+                          color: AppColors.borderGray,
+                          thickness: 0.8,
+                          height: 1),
+                      const SizedBox(height: 12),
+                      _buildBottomRow(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -582,7 +576,8 @@ class _GigTile extends StatelessWidget {
               top: 12,
               left: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFD97706),
                   borderRadius: BorderRadius.circular(8),
@@ -633,11 +628,8 @@ class _GigTile extends StatelessWidget {
                   ),
                   if (gig.drIsVerified) ...[
                     const SizedBox(width: 4),
-                    const Icon(
-                      Icons.verified_rounded,
-                      color: Color(0xFF3498DB),
-                      size: 15,
-                    ),
+                    const Icon(Icons.verified_rounded,
+                        color: Color(0xFF2563EB), size: 15),
                   ],
                 ],
               ),
@@ -645,9 +637,7 @@ class _GigTile extends StatelessWidget {
               Text(
                 gig.drSpecialty,
                 style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
+                    fontSize: 11, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -656,144 +646,126 @@ class _GigTile extends StatelessWidget {
     );
   }
 
-  Widget _avatar() {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: AppColors.primaryExtraLight,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: gig.drImageUrl.isNotEmpty
-            ? Image.network(
-                gig.drImageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.person_rounded,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-              )
-            : const Icon(
-                Icons.person_rounded,
-                color: AppColors.primary,
-                size: 22,
-              ),
-      ),
-    );
-  }
+  Widget _avatar() => Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: AppColors.primaryExtraLight,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: gig.drImageUrl.isNotEmpty
+              ? Image.network(
+                  gig.drImageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.person_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                )
+              : const Icon(Icons.person_rounded,
+                  color: AppColors.primary, size: 22),
+        ),
+      );
 
   Widget _buildTitle() => Text(
-    gig.fullTitle,
-    style: const TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-      color: AppColors.textPrimary,
-      height: 1.3,
-    ),
-    maxLines: 2,
-    overflow: TextOverflow.ellipsis,
-  );
+        gig.fullTitle,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+          height: 1.3,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      );
 
   Widget _buildMetaRow() => Row(
-    children: [
-      if (gig.drRating > 0) ...[
-        const Icon(Icons.star_rounded, size: 13, color: Color(0xFFF59E0B)),
-        const SizedBox(width: 3),
-        Text(
-          gig.drRating.toStringAsFixed(1),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        Text(
-          ' (${gig.totalReviews})',
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-        const SizedBox(width: 10),
-      ],
-      if (gig.totalOrders > 0) ...[
-        const Icon(
-          Icons.shopping_bag_outlined,
-          size: 12,
-          color: AppColors.textSecondary,
-        ),
-        const SizedBox(width: 3),
-        Text(
-          '${gig.totalOrders} orders',
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-      ],
-    ],
-  );
+        children: [
+          if (gig.drRating > 0) ...[
+            const Icon(Icons.star_rounded,
+                size: 13, color: Color(0xFFF59E0B)),
+            const SizedBox(width: 3),
+            Text(
+              gig.drRating.toStringAsFixed(1),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              ' (${gig.totalReviews})',
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary),
+            ),
+            const SizedBox(width: 10),
+          ],
+          if (gig.totalOrders > 0) ...[
+            const Icon(Icons.shopping_bag_outlined,
+                size: 12, color: AppColors.textSecondary),
+            const SizedBox(width: 3),
+            Text(
+              '${gig.totalOrders} orders',
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
+        ],
+      );
 
   Widget _buildTypeTags() => Wrap(
-    spacing: 6,
-    runSpacing: 6,
-    children: [
-      _tag(typeIcon, gig.consultationTypeStr, typeColor),
-      _tag(Icons.grid_view_rounded, gig.category, AppColors.textSecondary),
-      if (gig.hasPmdcUploaded)
-        _tag(Icons.verified_rounded, 'PMDC Verified', const Color(0xFF27AE60)),
-    ],
-  );
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          _tag(typeIcon, gig.consultationTypeStr, typeColor),
+          _tag(Icons.grid_view_rounded, gig.category,
+              AppColors.textSecondary),
+          if (gig.hasPmdcUploaded)
+            _tag(Icons.verified_rounded, 'PMDC Verified',
+                const Color(0xFF059669)),
+        ],
+      );
 
   Widget _tag(IconData icon, String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: color.withOpacity(0.3)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 10, color: color),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
-      ],
-    ),
-  );
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildPackagesRow() {
     final pkgs = [
-      (
-        gig.basicPackage,
-        const Color(0xFF3498DB),
-        const Color(0xFFEBF5FB),
-        'Basic',
-      ),
-      (
-        gig.standardPackage,
-        AppColors.primary,
-        AppColors.primaryExtraLight,
-        'Standard',
-      ),
-      (
-        gig.premiumPackage,
-        const Color(0xFFF59E0B),
-        const Color(0xFFFEF3C7),
-        'Premium',
-      ),
+      (gig.basicPackage,    const Color(0xFF2563EB), const Color(0xFFEFF6FF), 'Basic'),
+      (gig.standardPackage, AppColors.primary,        AppColors.primaryExtraLight, 'Standard'),
+      (gig.premiumPackage,  const Color(0xFFD97706), const Color(0xFFFEF3C7), 'Premium'),
     ];
     return Row(
       children: pkgs.asMap().entries.map((e) {
-        final i = e.key;
+        final i   = e.key;
         final pkg = e.value.$1;
         final col = e.value.$2;
-        final bg = e.value.$3;
-        final name = e.value.$4;
+        final bg  = e.value.$3;
+        final name= e.value.$4;
         return Expanded(
           child: Container(
             margin: EdgeInsets.only(right: i < 2 ? 6 : 0),
@@ -805,28 +777,23 @@ class _GigTile extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: col,
-                  ),
-                ),
+                Text(name,
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: col)),
                 const SizedBox(height: 2),
                 Text(
                   'Rs. ${pkg.price.toStringAsFixed(0)}',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: col,
-                  ),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: col),
                 ),
                 const SizedBox(height: 1),
-                Text(
-                  pkg.deliveryTime,
-                  style: TextStyle(fontSize: 9, color: col.withOpacity(0.75)),
-                ),
+                Text(pkg.deliveryTime,
+                    style:
+                        TextStyle(fontSize: 9, color: col.withOpacity(0.75))),
               ],
             ),
           ),
@@ -836,74 +803,71 @@ class _GigTile extends StatelessWidget {
   }
 
   Widget _buildBottomRow() => Row(
-    children: [
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Starting from',
-            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            'Rs. ${gig.startingPrice.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
-      ),
-      const Spacer(),
-      GestureDetector(
-        onTap: onChat,
-        child: Container(
-          height: 40,
-          width: 40,
-          decoration: BoxDecoration(
-            color: AppColors.primaryExtraLight,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primary.withOpacity(0.25)),
-          ),
-          child: const Icon(
-            Icons.chat_bubble_outline_rounded,
-            color: AppColors.primary,
-            size: 18,
-          ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      GestureDetector(
-        onTap: onBook,
-        child: Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          decoration: BoxDecoration(
-            gradient: AppColors.orangeGradient,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Starting from',
+                  style: TextStyle(
+                      fontSize: 10, color: AppColors.textSecondary)),
+              const SizedBox(height: 1),
+              Text(
+                'Rs. ${gig.startingPrice.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
               ),
             ],
           ),
-          child: const Center(
-            child: Text(
-              'Book Now',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+          const Spacer(),
+          GestureDetector(
+            onTap: onChat,
+            child: Container(
+              height: 40,
+              width: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primaryExtraLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.25)),
+              ),
+              child: const Icon(Icons.chat_bubble_outline_rounded,
+                  color: AppColors.primary, size: 18),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onBook,
+            child: Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              decoration: BoxDecoration(
+                gradient: AppColors.orangeGradient,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'Book Now',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    ],
-  );
+        ],
+      );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -928,10 +892,8 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 0.4,
-      end: 0.9,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.4, end: 0.9)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -961,8 +923,7 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
                 decoration: BoxDecoration(
                   color: AppColors.borderGray,
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
+                      top: Radius.circular(20)),
                 ),
               ),
               Padding(
@@ -1015,13 +976,13 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
   }
 
   Widget _sh(double h, double w, {double r = 6}) => Container(
-    height: h,
-    width: w,
-    decoration: BoxDecoration(
-      color: AppColors.borderGray,
-      borderRadius: BorderRadius.circular(r),
-    ),
-  );
+        height: h,
+        width: w,
+        decoration: BoxDecoration(
+          color: AppColors.borderGray,
+          borderRadius: BorderRadius.circular(r),
+        ),
+      );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1035,54 +996,48 @@ class _ErrorRetry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
-    child: Column(
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: AppColors.errorLight,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.wifi_off_rounded,
-            color: AppColors.error,
-            size: 36,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: 20),
-        GestureDetector(
-          onTap: onRetry,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-            decoration: BoxDecoration(
-              gradient: AppColors.orangeGradient,
-              borderRadius: BorderRadius.circular(12),
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.errorLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.wifi_off_rounded,
+                  color: AppColors.error, size: 36),
             ),
-            child: const Text(
-              'Try again',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: onRetry,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: AppColors.orangeGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Try again',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold),
+                ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1094,34 +1049,28 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 70, horizontal: 32),
-    child: Column(
-      children: [
-        Icon(
-          Icons.search_off_rounded,
-          color: AppColors.textSecondary,
-          size: 52,
+        padding: EdgeInsets.symmetric(vertical: 70, horizontal: 32),
+        child: Column(
+          children: [
+            Icon(Icons.search_off_rounded,
+                color: AppColors.textSecondary, size: 52),
+            SizedBox(height: 14),
+            Text(
+              'No doctors found',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Try a different search or category.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+            ),
+          ],
         ),
-        SizedBox(height: 14),
-        Text(
-          'No doctors found',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        SizedBox(height: 6),
-        Text(
-          'Try a different search or category.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-            height: 1.5,
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 }

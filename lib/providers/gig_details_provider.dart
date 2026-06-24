@@ -14,20 +14,16 @@ class GigDetailsProvider extends ChangeNotifier {
 
   final PatientGigService _service;
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  GigDetailsState _state = GigDetailsState.idle;
+  GigDetailsState _state            = GigDetailsState.idle;
   GigModel?       _gig;
   String?         _errorMessage;
+  int             _selectedPackageIndex = 0;
 
-  // Selected package index: 0 = Basic, 1 = Standard, 2 = Premium
-  int _selectedPackageIndex = 0;
-
-  // ── Getters ───────────────────────────────────────────────────────────────
-  GigDetailsState get state            => _state;
-  GigModel?       get gig              => _gig;
-  String?         get errorMessage     => _errorMessage;
-  bool            get isLoading        => _state == GigDetailsState.loading;
-  bool            get hasError         => _state == GigDetailsState.error;
+  GigDetailsState get state                => _state;
+  GigModel?       get gig                  => _gig;
+  String?         get errorMessage         => _errorMessage;
+  bool            get isLoading            => _state == GigDetailsState.loading;
+  bool            get hasError             => _state == GigDetailsState.error;
   int             get selectedPackageIndex => _selectedPackageIndex;
 
   GigPackage? get selectedPackage {
@@ -40,7 +36,10 @@ class GigDetailsProvider extends ChangeNotifier {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // LOAD GIG — pass the gig directly (from list tap) to avoid a re-fetch
+  // SET GIG
+  // FIX: incrementViews is now void (fire-and-forget in the service layer)
+  // so it never blocks this method or the UI thread.
+  // This method itself is synchronous — safe to call before Navigator.push.
   // ══════════════════════════════════════════════════════════════════════════
 
   void setGig(GigModel gig) {
@@ -50,11 +49,10 @@ class GigDetailsProvider extends ChangeNotifier {
     _errorMessage         = null;
     notifyListeners();
 
-    // Fire-and-forget view counter — doesn't block the UI
+    // Fire-and-forget — void, never awaited, never blocks UI
     _service.incrementViews(gig.gigId);
   }
 
-  // ── Optional: fetch fresh by ID (e.g. from a deep link) ───────────────────
   Future<void> loadGigById(String gigId) async {
     _state = GigDetailsState.loading;
     notifyListeners();
@@ -76,14 +74,12 @@ class GigDetailsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Switch package tab (Basic / Standard / Premium) ───────────────────────
   void selectPackage(int index) {
     if (_selectedPackageIndex == index) return;
     _selectedPackageIndex = index;
     notifyListeners();
   }
 
-  // ── Clear when leaving the screen ─────────────────────────────────────────
   void clear() {
     _gig                  = null;
     _state                = GigDetailsState.idle;

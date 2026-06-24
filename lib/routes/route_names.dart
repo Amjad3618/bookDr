@@ -4,4 +4,5 @@ class RouteNames {
   static const String mainscreen = '/MainScreen';
   static const String doctorDetail = '/doctor-detail';
   static const String bookAppointment = '/book-appointment';
+  static const String gigsdetails = '/gigsdetails';
 }
