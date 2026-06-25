@@ -1,3 +1,5 @@
+
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -24,11 +26,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
   @override
   void initState() {
     super.initState();
-    // ── DO NOT call setGig() here ──────────────────────────────────────────
-    // The provider was already populated in _openGigDetails() BEFORE the push.
-    // Calling setGig() again here triggers notifyListeners() during the route
-    // animation which is what caused the freeze.
-    // ───────────────────────────────────────────────────────────────────────
     _scrollCtrl.addListener(_onScroll);
   }
 
@@ -42,15 +39,9 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
     _pageCtrl.dispose();
-    // ── DO NOT call provider.clear() here ─────────────────────────────────
-    // clear() calls notifyListeners() during the pop animation → jank/freeze.
-    // The provider is disposed automatically when the ChangeNotifierProvider
-    // that wraps this route is removed from the tree.
-    // ───────────────────────────────────────────────────────────────────────
     super.dispose();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
   List<String> _allImages(GigModel gig) {
     final imgs = <String>[];
     if (gig.coverImageUrl.isNotEmpty) imgs.add(gig.coverImageUrl);
@@ -78,50 +69,57 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // BUILD
-  // ══════════════════════════════════════════════════════════════════════════
-
   @override
   Widget build(BuildContext context) {
-    // Read directly — no Consumer needed since we never call setGig() here.
-    // Only selectedPackageIndex changes via selectPackage(), so we still
-    // need Consumer for the package section. We split it below.
+    final topPad = MediaQuery.of(context).padding.top;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: AppColors.backgroundColor,
-        extendBodyBehindAppBar: true,
         body: Stack(
           children: [
-            CustomScrollView(
+            ListView(
               controller: _scrollCtrl,
               physics: const ClampingScrollPhysics(),
-              slivers: [
-                _buildSliverAppBar(widget.gig),
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDoctorCard(widget.gig),
-                      _buildTitleSection(widget.gig),
-                      if (_allImages(widget.gig).length > 1)
-                        _buildGallerySection(widget.gig),
-                      _buildDescriptionSection(widget.gig),
-                      _buildPackagesSection(widget.gig),   // has its own Consumer
-                      if (widget.gig.requirements.trim().isNotEmpty)
-                        _buildRequirementsSection(widget.gig),
-                      if (widget.gig.faqs.isNotEmpty)
-                        _buildFaqSection(widget.gig),
-                      _buildStatsSection(widget.gig),
-                      const SizedBox(height: 110),
-                    ],
-                  ),
-                ),
+              padding: EdgeInsets.zero,
+              children: [
+                _buildImageGallery(widget.gig),
+                _buildDoctorCard(widget.gig),
+                _buildTitleSection(widget.gig),
+                _buildDescriptionSection(widget.gig),
+                _buildPackagesSection(widget.gig),
+                if (widget.gig.requirements.trim().isNotEmpty)
+                  _buildRequirementsSection(widget.gig),
+                if (widget.gig.faqs.isNotEmpty) _buildFaqSection(widget.gig),
+                _buildStatsSection(widget.gig),
+                const SizedBox(height: 110),
               ],
             ),
-
-            // Sticky mini-header
+            Positioned(
+              top: topPad + 8,
+              left: 12,
+              right: 12,
+              child: Row(
+                children: [
+                  _overlayBtn(Icons.arrow_back_ios_new_rounded,
+                      () => Navigator.pop(context)),
+                  const Spacer(),
+                  _overlayBtn(
+                    _isFavorited
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _isFavorited = !_isFavorited);
+                    },
+                    color: _isFavorited ? Colors.red : Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  _overlayBtn(Icons.share_outlined,
+                      () => HapticFeedback.lightImpact()),
+                ],
+              ),
+            ),
             AnimatedPositioned(
               duration: const Duration(milliseconds: 200),
               top: _showSticky ? 0 : -80,
@@ -136,130 +134,193 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     );
   }
 
-  // ── Sliver App Bar ────────────────────────────────────────────────────────
-  Widget _buildSliverAppBar(GigModel gig) {
+  // ── Image gallery ───────────────────────────────────────────────────────
+  Widget _buildImageGallery(GigModel gig) {
     final images = _allImages(gig);
-    return SliverAppBar(
-      expandedHeight: 280,
-      pinned: true,
-      backgroundColor: AppColors.primary,
-      elevation: 0,
-      automaticallyImplyLeading: false,
-      flexibleSpace: FlexibleSpaceBar(
-        collapseMode: CollapseMode.parallax,
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Cover image / PageView
-            images.isNotEmpty
-                ? NotificationListener<ScrollNotification>(
-                    onNotification: (n) => n.depth == 0,
-                    child: PageView.builder(
-                      controller: _pageCtrl,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: images.length,
-                      onPageChanged: (i) => setState(() => _galleryPage = i),
-                      itemBuilder: (_, i) => Image.network(
-                        images[i],
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _coverPlaceholder(),
-                      ),
-                    ),
-                  )
-                : _coverPlaceholder(),
 
-            // Gradient overlay
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x55000000),
-                    Colors.transparent,
-                    Color(0xAA000000),
-                  ],
-                  stops: [0.0, 0.4, 1.0],
-                ),
-              ),
-            ),
+    assert(() {
+      debugPrint('GigDetailsView -> images found: ${images.length} -> $images');
+      return true;
+    }());
 
-            // Page dots
-            if (images.length > 1)
-              Positioned(
-                bottom: 14,
-                left: 0,
-                right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    images.length,
-                    (i) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: _galleryPage == i ? 18 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: _galleryPage == i
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
+    if (images.isEmpty) {
+      return SizedBox(height: 280, child: _coverPlaceholder());
+    }
+
+    return SizedBox(
+      height: images.length > 1 ? 340 : 280,
+      child: Column(
+        children: [
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PageView.builder(
+                  controller: _pageCtrl,
+                  physics: const PageScrollPhysics(),
+                  allowImplicitScrolling: false,
+                  itemCount: images.length,
+                  onPageChanged: (i) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _galleryPage = i);
+                  },
+                  itemBuilder: (_, i) => GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _openImageViewer(images, i),
+                    child: Image.network(
+                      images[i],
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _coverPlaceholder(),
                     ),
                   ),
                 ),
-              ),
-
-            // Featured badge
-            if (gig.isFeatured)
-              Positioned(
-                bottom: 16,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                const DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: AppColors.orangeGradient,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0x55000000),
+                        Colors.transparent,
+                        Color(0x88000000),
+                      ],
+                      stops: [0.0, 0.45, 1.0],
+                    ),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.star_rounded, color: Colors.white, size: 12),
-                      SizedBox(width: 4),
-                      Text(
-                        'FEATURED',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
+                ),
+                if (images.length > 1)
+                  Positioned(
+                    bottom: 14,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        images.length,
+                        (i) => GestureDetector(
+                          onTap: () => _pageCtrl.animateToPage(
+                            i,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                          ),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: _galleryPage == i ? 20 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: _galleryPage == i
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.45),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      title: Row(
-        children: [
-          _overlayBtn(Icons.arrow_back_ios_new_rounded,
-              () => Navigator.pop(context)),
-          const Spacer(),
-          _overlayBtn(
-            _isFavorited
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            () {
-              HapticFeedback.lightImpact();
-              setState(() => _isFavorited = !_isFavorited);
-            },
-            color: _isFavorited ? Colors.red : Colors.white,
+                if (images.length > 1)
+                  Positioned(
+                    top: 14,
+                    right: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_galleryPage + 1} / ${images.length}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                if (gig.isFeatured)
+                  Positioned(
+                    bottom: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.orangeGradient,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star_rounded,
+                              color: Colors.white, size: 12),
+                          SizedBox(width: 4),
+                          Text(
+                            'FEATURED',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(width: 8),
-          _overlayBtn(Icons.share_outlined, () => HapticFeedback.lightImpact()),
+
+          // ── Thumbnail strip — explicit, tap-to-jump navigation so the
+          // gallery never depends solely on swipe gestures working.
+          if (images.length > 1)
+            Container(
+              height: 60,
+              color: AppColors.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: images.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final selected = _galleryPage == i;
+                  return GestureDetector(
+                    onTap: () => _pageCtrl.animateToPage(
+                      i,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                    ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 44,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.borderGray,
+                          width: selected ? 2 : 1,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          images[i],
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: AppColors.primaryExtraLight,
+                            child: const Icon(Icons.image_rounded,
+                                size: 16, color: AppColors.primary),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -295,7 +356,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
         ),
       );
 
-  // ── Sticky header ─────────────────────────────────────────────────────────
   Widget _buildStickyHeader(GigModel gig) {
     return Container(
       color: AppColors.surface,
@@ -339,7 +399,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     );
   }
 
-  // ── Doctor card ────────────────────────────────────────────────────────────
   Widget _buildDoctorCard(GigModel gig) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -352,7 +411,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
       ),
       child: Row(
         children: [
-          // Avatar with verified badge
           Stack(
             children: [
               Container(
@@ -396,8 +454,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
             ],
           ),
           const SizedBox(width: 14),
-
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,8 +497,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
               ],
             ),
           ),
-
-          // View profile
           GestureDetector(
             onTap: () => HapticFeedback.selectionClick(),
             child: Container(
@@ -471,7 +525,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     );
   }
 
-  // ── Title + tags ───────────────────────────────────────────────────────────
   Widget _buildTitleSection(GigModel gig) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -568,42 +621,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
         ],
       );
 
-  // ── Gallery ───────────────────────────────────────────────────────────────
-  Widget _buildGallerySection(GigModel gig) {
-    final images = _allImages(gig);
-    return _sectionCard(
-      icon: Icons.photo_library_outlined,
-      title: 'Gallery',
-      child: SizedBox(
-        height: 110,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: images.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
-          itemBuilder: (_, i) => GestureDetector(
-            onTap: () => _openImageViewer(images, i),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                images[i],
-                width: 150,
-                height: 110,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 150,
-                  height: 110,
-                  color: AppColors.primaryExtraLight,
-                  child: const Icon(Icons.broken_image_rounded,
-                      color: AppColors.primary),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   void _openImageViewer(List<String> images, int index) {
     Navigator.push(
       context,
@@ -616,7 +633,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     );
   }
 
-  // ── Description ───────────────────────────────────────────────────────────
   Widget _buildDescriptionSection(GigModel gig) => _sectionCard(
         icon: Icons.description_outlined,
         title: 'About This Service',
@@ -629,7 +645,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
         ),
       );
 
-  // ── Packages — isolated Consumer so only this section rebuilds ─────────────
   Widget _buildPackagesSection(GigModel gig) {
     final pkgNames  = ['Basic', 'Standard', 'Premium'];
     final pkgColors = [
@@ -650,7 +665,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
       child: Consumer<GigDetailsProvider>(
         builder: (_, prov, __) => Column(
           children: [
-            // Tab row
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -670,9 +684,7 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: sel
-                              ? pkgColors[i]
-                              : Colors.transparent,
+                          color: sel ? pkgColors[i] : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: sel
                               ? [
@@ -718,8 +730,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
               ),
             ),
             const SizedBox(height: 14),
-
-            // Package detail card
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               transitionBuilder: (child, anim) =>
@@ -868,7 +878,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
         ],
       );
 
-  // ── Requirements ──────────────────────────────────────────────────────────
   Widget _buildRequirementsSection(GigModel gig) => _sectionCard(
         icon: Icons.checklist_rounded,
         title: 'What You Need to Provide',
@@ -879,7 +888,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                 height: 1.7)),
       );
 
-  // ── FAQ ───────────────────────────────────────────────────────────────────
   Widget _buildFaqSection(GigModel gig) => _sectionCard(
         icon: Icons.help_outline_rounded,
         title: 'Frequently Asked Questions',
@@ -892,7 +900,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
         ),
       );
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
   Widget _buildStatsSection(GigModel gig) => _sectionCard(
         icon: Icons.bar_chart_rounded,
         title: 'Service Stats',
@@ -940,7 +947,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
         ),
       );
 
-  // ── Section card wrapper ──────────────────────────────────────────────────
   Widget _sectionCard({
     required IconData icon,
     required String title,
@@ -983,7 +989,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
         ),
       );
 
-  // ── Bottom bar ─────────────────────────────────────────────────────────────
   Widget _buildBottomBar(BuildContext context, GigModel gig) {
     return Consumer<GigDetailsProvider>(
       builder: (_, prov, __) {
@@ -1083,10 +1088,6 @@ class _GigDetailsViewState extends State<GigDetailsView> {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// FULLSCREEN IMAGE VIEWER
-// ══════════════════════════════════════════════════════════════════════════════
-
 class _ImageViewer extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
@@ -1117,12 +1118,13 @@ class _ImageViewerState extends State<_ImageViewer> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Stack(
-          children: [
-            PageView.builder(
+      body: Stack(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: PageView.builder(
               controller: _ctrl,
+              physics: const PageScrollPhysics(),
               itemCount: widget.images.length,
               onPageChanged: (i) => setState(() => _current = i),
               itemBuilder: (_, i) => InteractiveViewer(
@@ -1138,47 +1140,41 @@ class _ImageViewerState extends State<_ImageViewer> {
                 ),
               ),
             ),
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              right: 16,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: Colors.white24, width: 1),
-                  ),
-                  child: const Icon(Icons.close_rounded,
-                      color: Colors.white, size: 18),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24, width: 1),
                 ),
+                child: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 18),
               ),
             ),
-            if (widget.images.length > 1)
-              Positioned(
-                bottom: 30,
-                left: 0,
-                right: 0,
-                child: Text(
-                  '${_current + 1} / ${widget.images.length}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 13),
-                ),
+          ),
+          if (widget.images.length > 1)
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Text(
+                '${_current + 1} / ${widget.images.length}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// FAQ TILE
-// ══════════════════════════════════════════════════════════════════════════════
 
 class _FaqTile extends StatefulWidget {
   final int index;

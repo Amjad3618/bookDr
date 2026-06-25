@@ -154,8 +154,12 @@ class PatientGigService {
   // ══════════════════════════════════════════════════════════════════════════
 
   void incrementViews(String gigId) {
-    // Intentionally NOT async/await — write happens in background
-    _gigs.doc(gigId).update({'totalViews': FieldValue.increment(1)});
+    // Fire-and-forget. catchError discards PERMISSION_DENIED and any other
+    // failure so Firestore never retries and never blocks the UI thread.
+    _gigs
+        .doc(gigId)
+        .update({'totalViews': FieldValue.increment(1)})
+        .catchError((_) {});
   }
 
   Exception _handle(FirebaseException e, String op) {
