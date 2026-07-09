@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/theme/app_colors.dart';
+import '../views/dm_view/dm_view.dart';
 import '../views/profile/profile_view.dart';
 
 class MainScreen extends StatefulWidget {
@@ -22,15 +23,17 @@ class _MainScreenState extends State<MainScreen> {
   // ── Screens ───────────────────────────────────────────────────────────────
   final List<Widget> _screens = [
     const HomeView(),
+    const DmView(),
     const SearchView(),
     const DoctorsView(),
     const AppointmentsView(),
-    const ProfileView(),
+    const EditProfileView(),
   ];
 
   // ── Nav metadata ──────────────────────────────────────────────────────────
   static const _navItems = [
     _NavMeta(Icons.home_rounded, 'Home'),
+    _NavMeta(Icons.message_rounded, 'Messages'),
     _NavMeta(Icons.search_rounded, 'Search'),
     _NavMeta(Icons.groups_rounded, 'Doctors'),
     _NavMeta(Icons.calendar_month_rounded, 'Schedule'),

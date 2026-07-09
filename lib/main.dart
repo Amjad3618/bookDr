@@ -1,3 +1,4 @@
+import 'package:bookdr/providers/dm_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,6 +25,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PatientAuthProvider()),
         ChangeNotifierProvider(create: (_) => HomeGigProvider()),
         ChangeNotifierProvider(create: (_) => DoctorProvider()),
+        ChangeNotifierProvider(create: (_) => DmProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

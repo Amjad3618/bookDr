@@ -9,9 +9,12 @@ import 'package:provider/provider.dart';
 import 'package:bookdr/core/theme/app_colors.dart';
 
 import '../../models/dr_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/homegig_provider.dart';
 import '../../providers/gig_details_provider.dart';
+import '../../providers/dm_provider.dart';
 import '../details_screens/gigs_details_view.dart';
+import '../dm_view/dm_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -29,35 +32,35 @@ class _HomeViewState extends State<HomeView> {
 
   Color _typeColor(String type) {
     switch (type) {
-      case 'Video Call':        return const Color(0xFF2563EB);
-      case 'Chat / Messaging':  return const Color(0xFF059669);
-      case 'Report Review Only':return const Color(0xFFD97706);
-      default:                  return AppColors.primary;
+      case 'Video Call':         return const Color(0xFF2563EB);
+      case 'Chat / Messaging':   return const Color(0xFF059669);
+      case 'Report Review Only': return const Color(0xFFD97706);
+      default:                   return AppColors.primary;
     }
   }
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'Video Call':        return Icons.videocam_rounded;
-      case 'Chat / Messaging':  return Icons.chat_bubble_rounded;
-      case 'Report Review Only':return Icons.description_rounded;
-      default:                  return Icons.medical_services_rounded;
+      case 'Video Call':         return Icons.videocam_rounded;
+      case 'Chat / Messaging':   return Icons.chat_bubble_rounded;
+      case 'Report Review Only': return Icons.description_rounded;
+      default:                   return Icons.medical_services_rounded;
     }
   }
 
   IconData _catIcon(String cat) {
     const map = <String, IconData>{
-      'All':          Icons.grid_view_rounded,
-      'Cardiology':   Icons.favorite_rounded,
-      'Diagnostics':  Icons.biotech_rounded,
-      'Lifestyle':    Icons.self_improvement_rounded,
-      'Pediatrics':   Icons.child_care_rounded,
-      'General':      Icons.local_hospital_rounded,
-      'Psychiatry':   Icons.psychology_rounded,
-      'Neurology':    Icons.psychology_outlined,
-      'Orthopedics':  Icons.accessibility_new_rounded,
-      'Dermatology':  Icons.face_rounded,
-      'Dentistry':    Icons.medical_services_rounded,
+      'All':         Icons.grid_view_rounded,
+      'Cardiology':  Icons.favorite_rounded,
+      'Diagnostics': Icons.biotech_rounded,
+      'Lifestyle':   Icons.self_improvement_rounded,
+      'Pediatrics':  Icons.child_care_rounded,
+      'General':     Icons.local_hospital_rounded,
+      'Psychiatry':  Icons.psychology_rounded,
+      'Neurology':   Icons.psychology_outlined,
+      'Orthopedics': Icons.accessibility_new_rounded,
+      'Dermatology': Icons.face_rounded,
+      'Dentistry':   Icons.medical_services_rounded,
     };
     return map[cat] ?? Icons.medical_services_rounded;
   }
@@ -79,16 +82,11 @@ class _HomeViewState extends State<HomeView> {
   }
 
   // ── Navigate to gig details ───────────────────────────────────────────────
-  // KEY FIX: _isNavigating guard prevents the freeze caused by multiple
-  // simultaneous pushes when the user taps quickly or the list is scrolling.
-  // The GigDetailsProvider is created BEFORE the route is pushed so setGig()
-  // is never called during the Hero/route animation — that was the freeze.
   void _openGigDetails(GigModel gig) {
     if (_isNavigating) return;
     _isNavigating = true;
     HapticFeedback.selectionClick();
 
-    // Create provider outside the route so it's ready before the first frame
     final detailsProvider = GigDetailsProvider()..setGig(gig);
 
     Navigator.push(
@@ -100,6 +98,34 @@ class _HomeViewState extends State<HomeView> {
         ),
       ),
     ).then((_) => _isNavigating = false);
+  }
+
+  // ── Navigate to DM chat ───────────────────────────────────────────────────
+  void _openDmChat(GigModel gig) {
+    final patient = context.read<PatientAuthProvider>().patient;
+    if (patient == null) return;
+
+    // Create + initialise provider BEFORE pushing the route so Firestore
+    // call starts during the navigation animation, not after.
+    final dmProv = DmProvider();
+    dmProv.initialise(
+      patientId:       patient.patientId,
+      patientName:     patient.name,
+      patientImageUrl: patient.profileImageUrl ?? '',
+      doctorId:        gig.drId,
+      doctorName:      gig.drName,
+      doctorImageUrl:  gig.drImageUrl,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: dmProv,
+          child: const DmView(),
+        ),
+      ),
+    );
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -198,8 +224,7 @@ class _HomeViewState extends State<HomeView> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(11),
-                  border:
-                      Border.all(color: Colors.white.withOpacity(0.35)),
+                  border: Border.all(color: Colors.white.withOpacity(0.35)),
                 ),
                 child: Stack(
                   alignment: Alignment.center,
@@ -229,8 +254,6 @@ class _HomeViewState extends State<HomeView> {
         ),
         body: CustomScrollView(
           controller: _scrollCtrl,
-          // ClampingScrollPhysics instead of Bouncing — prevents the rubber-band
-          // effect from eating tap events on the gig cards during scroll
           physics: const ClampingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _buildSearchBar(prov)),
@@ -321,7 +344,7 @@ class _HomeViewState extends State<HomeView> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: prov.categories.length,
           itemBuilder: (_, i) {
-            final cat = prov.categories[i];
+            final cat      = prov.categories[i];
             final selected = prov.selectedCategory == cat;
             return GestureDetector(
               onTap: () {
@@ -459,12 +482,12 @@ class _HomeViewState extends State<HomeView> {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (_, i) => _GigTile(
-          gig: prov.gigs[i],
+          gig:       prov.gigs[i],
           typeColor: _typeColor(prov.gigs[i].consultationTypeStr),
-          typeIcon: _typeIcon(prov.gigs[i].consultationTypeStr),
+          typeIcon:  _typeIcon(prov.gigs[i].consultationTypeStr),
           onTapCard: () => _openGigDetails(prov.gigs[i]),
-          onChat: () => HapticFeedback.selectionClick(),
-          onBook: () => _openGigDetails(prov.gigs[i]),
+          onChat:    () => _openDmChat(prov.gigs[i]),   // ← DM wired here
+          onBook:    () => _openGigDetails(prov.gigs[i]),
         ),
         childCount: prov.gigs.length,
       ),
@@ -477,9 +500,9 @@ class _HomeViewState extends State<HomeView> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _GigTile extends StatelessWidget {
-  final GigModel gig;
-  final Color typeColor;
-  final IconData typeIcon;
+  final GigModel     gig;
+  final Color        typeColor;
+  final IconData     typeIcon;
   final VoidCallback onTapCard;
   final VoidCallback onChat;
   final VoidCallback onBook;
@@ -495,8 +518,6 @@ class _GigTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // InkWell instead of GestureDetector — properly handles tap registration
-    // during list scroll without eating the gesture or freezing
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Material(
@@ -761,11 +782,11 @@ class _GigTile extends StatelessWidget {
     ];
     return Row(
       children: pkgs.asMap().entries.map((e) {
-        final i   = e.key;
-        final pkg = e.value.$1;
-        final col = e.value.$2;
-        final bg  = e.value.$3;
-        final name= e.value.$4;
+        final i    = e.key;
+        final pkg  = e.value.$1;
+        final col  = e.value.$2;
+        final bg   = e.value.$3;
+        final name = e.value.$4;
         return Expanded(
           child: Container(
             margin: EdgeInsets.only(right: i < 2 ? 6 : 0),
@@ -792,8 +813,8 @@ class _GigTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 1),
                 Text(pkg.deliveryTime,
-                    style:
-                        TextStyle(fontSize: 9, color: col.withOpacity(0.75))),
+                    style: TextStyle(
+                        fontSize: 9, color: col.withOpacity(0.75))),
               ],
             ),
           ),
@@ -883,7 +904,7 @@ class _GigTileSkeleton extends StatefulWidget {
 class _GigTileSkeletonState extends State<_GigTileSkeleton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double> _anim;
+  late Animation<double>   _anim;
 
   @override
   void initState() {
@@ -990,7 +1011,7 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _ErrorRetry extends StatelessWidget {
-  final String message;
+  final String       message;
   final VoidCallback onRetry;
   const _ErrorRetry({required this.message, required this.onRetry});
 
@@ -1014,7 +1035,9 @@ class _ErrorRetry extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.5),
             ),
             const SizedBox(height: 20),
             GestureDetector(
@@ -1068,7 +1091,9 @@ class _EmptyState extends StatelessWidget {
               'Try a different search or category.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.5),
             ),
           ],
         ),

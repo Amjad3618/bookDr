@@ -1,212 +1,132 @@
-// lib/features/profile/views/profile_view.dart
+// lib/features/profile/views/edit_profile_view.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
-import '../../../core/theme/app_colors.dart';
-import '../../../models/patient_model.dart';
-import '../../providers/auth_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-class ProfileView extends StatelessWidget {
-  const ProfileView({super.key});
+import '../../../core/theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
+
+class EditProfileView extends StatefulWidget {
+  const EditProfileView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<PatientAuthProvider>(
-      builder: (context, authProvider, _) {
-final PatientModel? patient = authProvider.patient;
-        if (patient == null) {
-          return const Scaffold(
-            backgroundColor: AppColors.background,
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-          );
-        }
-
-        return _ProfileContent(patient: patient);
-      },
-    );
-  }
+  State<EditProfileView> createState() => _EditProfileViewState();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Content
-// ─────────────────────────────────────────────────────────────────────────────
+class _EditProfileViewState extends State<EditProfileView> {
+  final _formKey = GlobalKey<FormState>();
 
-class _ProfileContent extends StatelessWidget {
-  const _ProfileContent({required this.patient});
+  // Controllers
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _addressController;
+  late TextEditingController _cityController;
 
-  final PatientModel patient;
+  // Dropdown values
+  String? _selectedGender;
+  String? _selectedBloodGroup;
+  DateTime? _selectedDob;
+
+  // Tags (editable lists)
+  List<String> _allergies = [];
+  List<String> _medicalHistory = [];
+
+  // Image
+  File? _pickedImage;
+  bool _isSaving = false;
+
+  // Options
+  final _genders = ['Male', 'Female', 'Other'];
+  final _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+  void initState() {
+    super.initState();
+    final p = context.read<PatientAuthProvider>().patient!;
+    _nameController = TextEditingController(text: p.name);
+    _phoneController = TextEditingController(text: p.phone);
+    _addressController = TextEditingController(text: p.address ?? '');
+    _cityController = TextEditingController(text: p.city ?? '');
+    _selectedGender = p.gender;
+    _selectedBloodGroup = p.bloodGroup;
+    _allergies = List<String>.from(p.allergies);
+    _medicalHistory = List<String>.from(p.medicalHistory);
+    if (p.dateOfBirth != null && p.dateOfBirth!.isNotEmpty) {
+      try {
+        _selectedDob = DateTime.parse(p.dateOfBirth!);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    super.dispose();
+  }
+
+  // ── Pick image ─────────────────────────────────────────────────────────────
+  Future<void> _pickImage(ImageSource source) async {
+    Navigator.pop(context); // close bottom sheet
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 800,
+    );
+    if (picked != null) {
+      setState(() => _pickedImage = File(picked.path));
+    }
+  }
+
+  void _showImagePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ──────────────────────────────────────────────────
-              _buildHeader(context),
-
-              // ── Profile Hero Card ────────────────────────────────────────
-              _ProfileHeroCard(patient: patient),
-
-              const SizedBox(height: 24),
-
-              // ── Wallet Stats Row ─────────────────────────────────────────
-              _WalletStatsRow(patient: patient),
-
-              const SizedBox(height: 24),
-
-              // ── Personal Information ─────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionTitle('Personal Information'),
-                    const SizedBox(height: 12),
-                    _InfoCard(
-                      icon: Icons.cake_rounded,
-                      title: 'Date of Birth',
-                      value: _formatDob(patient.dateOfBirth),
-                    ),
-                    const SizedBox(height: 10),
-                    _InfoCard(
-                      icon: Icons.wc_rounded,
-                      title: 'Gender',
-                      value: patient.gender ?? 'Not set',
-                    ),
-                    const SizedBox(height: 10),
-                    _InfoCard(
-                      icon: Icons.bloodtype_rounded,
-                      title: 'Blood Group',
-                      value: patient.bloodGroup ?? 'Not set',
-                    ),
-                    if (patient.city != null || patient.address != null) ...[
-                      const SizedBox(height: 10),
-                      _InfoCard(
-                        icon: Icons.location_on_rounded,
-                        title: 'Location',
-                        value: [patient.city, patient.address]
-                            .where((e) => e != null && e.isNotEmpty)
-                            .join(', '),
-                      ),
-                    ],
-                  ],
+              const Text(
+                'Change Profile Photo',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              // ── Medical History ──────────────────────────────────────────
-              if (patient.medicalHistory.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _sectionTitle('Medical History'),
-                      const SizedBox(height: 12),
-                      _TagsCard(
-                        icon: Icons.medical_information_rounded,
-                        tags: patient.medicalHistory,
-                        color: AppColors.errorLight,
-                        tagColor: AppColors.error,
-                      ),
-                    ],
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ImageSourceTile(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Camera',
+                      onTap: () => _pickImage(ImageSource.camera),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // ── Allergies ────────────────────────────────────────────────
-              if (patient.allergies.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _sectionTitle('Allergies'),
-                      const SizedBox(height: 12),
-                      _TagsCard(
-                        icon: Icons.warning_amber_rounded,
-                        tags: patient.allergies,
-                        color: AppColors.warningLight,
-                        tagColor: AppColors.warning,
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ImageSourceTile(
+                      icon: Icons.photo_library_rounded,
+                      label: 'Gallery',
+                      onTap: () => _pickImage(ImageSource.gallery),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // ── Account Status ───────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionTitle('Account'),
-                    const SizedBox(height: 12),
-                    _AccountStatusCard(patient: patient),
-                  ],
-                ),
+                ],
               ),
-
-              const SizedBox(height: 24),
-
-              // ── Action Buttons ───────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          // TODO: navigate to EditProfileView
-                        },
-                        style: AppColors.primaryButtonStyle,
-                        icon: const Icon(Icons.edit_rounded, size: 18),
-                        label: const Text(
-                          'Edit Profile',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          // TODO: navigate to AppointmentsView
-                        },
-                        style: AppColors.secondaryButtonStyle,
-                        icon: const Icon(Icons.calendar_month_rounded, size: 18),
-                        label: const Text(
-                          'View Appointments',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -214,36 +134,487 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'My Profile',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+  // ── Pick date ──────────────────────────────────────────────────────────────
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDob ?? DateTime(1990),
+      firstDate: DateTime(1900),
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedDob = picked);
+  }
+
+  // ── Add tag dialog ─────────────────────────────────────────────────────────
+  Future<void> _addTagDialog(String title, List<String> list) async {
+    final ctrl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Add $title'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Enter $title',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
           ),
-          GestureDetector(
-            onTap: () {
-              // TODO: navigate to SettingsView
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: AppColors.primaryButtonStyle,
+            onPressed: () {
+              if (ctrl.text.trim().isNotEmpty) {
+                setState(() => list.add(ctrl.text.trim()));
+              }
+              Navigator.pop(context);
             },
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: AppColors.subtleShadow,
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Save ───────────────────────────────────────────────────────────────────
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+
+    final provider = context.read<PatientAuthProvider>();
+
+    try {
+      // 1. Upload new image if picked
+      if (_pickedImage != null) {
+        await provider.uploadProfileImage(_pickedImage!);
+      }
+
+      // 2. Update profile fields
+      await provider.updateProfile({
+        'name': _nameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'address': _addressController.text.trim(),
+        'city': _cityController.text.trim(),
+        'gender': _selectedGender,
+        'bloodGroup': _selectedBloodGroup,
+        'dateOfBirth': _selectedDob?.toIso8601String().split('T').first,
+        'allergies': _allergies,
+        'medicalHistory': _medicalHistory,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Profile updated successfully!'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    final patient = context.watch<PatientAuthProvider>().patient!;
+    final isUploading = context.watch<PatientAuthProvider>().isUploading;
+    final uploadProgress = context.watch<PatientAuthProvider>().uploadProgress;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+        automaticallyImplyLeading: false,
+
+        elevation: 0,
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _isSaving
+                ? const Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    ),
+                  )
+                : TextButton(
+                    onPressed: _save,
+                    child: const Text(
+                      'Save',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              // ── Avatar section ─────────────────────────────────────────
+              Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                padding: const EdgeInsets.only(top: 24, bottom: 32),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _showImagePicker,
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 110,
+                            height: 110,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: isUploading
+                                  ? _buildUploadProgress(uploadProgress)
+                                  : _pickedImage != null
+                                  ? Image.file(_pickedImage!, fit: BoxFit.cover)
+                                  : (patient.profileImageUrl != null &&
+                                        patient.profileImageUrl!.isNotEmpty)
+                                  ? CachedNetworkImage(
+                                      imageUrl: patient.profileImageUrl!,
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, __) =>
+                                          _avatarFallback(patient.initials),
+                                      errorWidget: (_, __, ___) =>
+                                          _avatarFallback(patient.initials),
+                                    )
+                                  : _avatarFallback(patient.initials),
+                            ),
+                          ),
+                          // Camera badge
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: AppColors.primary,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Tap photo to change',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
-              child: const Icon(
-                Icons.settings_rounded,
-                size: 20,
-                color: AppColors.primary,
+
+              const SizedBox(height: 24),
+
+              // ── Form fields ────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Personal Info
+                    _sectionLabel('Personal Information'),
+                    const SizedBox(height: 12),
+
+                    _buildTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      icon: Icons.person_rounded,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Name is required'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildTextField(
+                      controller: _phoneController,
+                      label: 'Phone Number',
+                      icon: Icons.phone_rounded,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Date of Birth
+                    GestureDetector(
+                      onTap: _pickDate,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderGray),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.cake_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Date of Birth',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _selectedDob != null
+                                      ? _formatDate(_selectedDob!)
+                                      : 'Select date',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: _selectedDob != null
+                                        ? AppColors.textPrimary
+                                        : AppColors.textTertiary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Gender dropdown
+                    _buildDropdown(
+                      value: _selectedGender,
+                      label: 'Gender',
+                      icon: Icons.wc_rounded,
+                      items: _genders,
+                      onChanged: (v) => setState(() => _selectedGender = v),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Blood Group dropdown
+                    _buildDropdown(
+                      value: _selectedBloodGroup,
+                      label: 'Blood Group',
+                      icon: Icons.bloodtype_rounded,
+                      items: _bloodGroups,
+                      onChanged: (v) => setState(() => _selectedBloodGroup = v),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Location
+                    _sectionLabel('Location'),
+                    const SizedBox(height: 12),
+
+                    _buildTextField(
+                      controller: _cityController,
+                      label: 'City',
+                      icon: Icons.location_city_rounded,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildTextField(
+                      controller: _addressController,
+                      label: 'Address',
+                      icon: Icons.home_rounded,
+                      maxLines: 2,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Medical History
+                    _sectionLabel('Medical History'),
+                    const SizedBox(height: 12),
+                    _TagsEditor(
+                      tags: _medicalHistory,
+                      color: AppColors.errorLight,
+                      tagColor: AppColors.error,
+                      icon: Icons.medical_information_rounded,
+                      onAdd: () =>
+                          _addTagDialog('Medical Condition', _medicalHistory),
+                      onRemove: (i) =>
+                          setState(() => _medicalHistory.removeAt(i)),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Allergies
+                    _sectionLabel('Allergies'),
+                    const SizedBox(height: 12),
+                    _TagsEditor(
+                      tags: _allergies,
+                      color: AppColors.warningLight,
+                      tagColor: AppColors.warning,
+                      icon: Icons.warning_amber_rounded,
+                      onAdd: () => _addTagDialog('Allergy', _allergies),
+                      onRemove: (i) => setState(() => _allergies.removeAt(i)),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Save button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _isSaving ? null : _save,
+                        style: AppColors.primaryButtonStyle,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.save_rounded, size: 18),
+                        label: Text(
+                          _isSaving ? 'Saving...' : 'Save Changes',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  Widget _buildUploadProgress(double progress) {
+    return Container(
+      color: AppColors.primaryExtraLight,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            value: progress,
+            color: AppColors.primary,
+            strokeWidth: 3,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${(progress * 100).toInt()}%',
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -251,7 +622,22 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _avatarFallback(String initials) {
+    return Container(
+      color: AppColors.primaryExtraLight,
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: const TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String title) {
     return Text(
       title,
       style: const TextStyle(
@@ -262,425 +648,129 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
-  String _formatDob(String? dob) {
-    if (dob == null || dob.isEmpty) return 'Not set';
-    try {
-      final dt = DateTime.parse(dob);
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-      ];
-      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
-    } catch (_) {
-      return dob;
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Profile Hero Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ProfileHeroCard extends StatelessWidget {
-  const _ProfileHeroCard({required this.patient});
-
-  final PatientModel patient;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: AppColors.orangeGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppColors.primary, fontSize: 13),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+        filled: true,
+        fillColor: AppColors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.borderGray),
         ),
-        child: Stack(
-          children: [
-            // Background decoration circles
-            Positioned(
-              top: -20,
-              right: -20,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.08),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -30,
-              left: -10,
-              child: Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.06),
-                ),
-              ),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  // Avatar
-                  Stack(
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: patient.profileImageUrl != null &&
-                                  patient.profileImageUrl!.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: patient.profileImageUrl!,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) => _avatarFallback(),
-                                  errorWidget: (_, __, ___) => _avatarFallback(),
-                                )
-                              : _avatarFallback(),
-                        ),
-                      ),
-                      // Camera badge
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            color: AppColors.primary,
-                            size: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Name
-                  Text(
-                    patient.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.white,
-                    ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Email
-                  Text(
-                    patient.email,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withOpacity(0.85),
-                    ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Phone
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.phone_rounded,
-                        size: 13,
-                        color: Colors.white.withOpacity(0.85),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        patient.phone.isNotEmpty ? patient.phone : 'No phone',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.85),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Verified badge
-                  if (patient.isVerified)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.4),
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.verified_rounded,
-                            color: AppColors.white,
-                            size: 14,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Verified Account',
-                            style: TextStyle(
-                              color: AppColors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.borderGray),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
         ),
       ),
     );
   }
 
-  Widget _avatarFallback() {
-    return Container(
-      color: AppColors.primaryExtraLight,
-      alignment: Alignment.center,
-      child: Text(
-        patient.initials,
-        style: const TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: AppColors.primary,
+  Widget _buildDropdown({
+    required String? value,
+    required String label,
+    required IconData icon,
+    required List<String> items,
+    required void Function(String?) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppColors.primary, fontSize: 13),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+        filled: true,
+        fillColor: AppColors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.borderGray),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.borderGray),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
         ),
       ),
+      items: items
+          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+          .toList(),
+      onChanged: onChanged,
+      dropdownColor: AppColors.white,
+      borderRadius: BorderRadius.circular(12),
     );
+  }
+
+  String _formatDate(DateTime dt) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wallet Stats Row
+// Tags Editor Widget
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _WalletStatsRow extends StatelessWidget {
-  const _WalletStatsRow({required this.patient});
-
-  final PatientModel patient;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: _StatCard(
-              icon: Icons.account_balance_wallet_rounded,
-              label: 'Wallet Balance',
-              value: '\$${patient.walletBalance.toStringAsFixed(2)}',
-              iconColor: AppColors.success,
-              bgColor: AppColors.successLight,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _StatCard(
-              icon: Icons.receipt_long_rounded,
-              label: 'Total Spent',
-              value: '\$${patient.totalSpent.toStringAsFixed(2)}',
-              iconColor: AppColors.primary,
-              bgColor: AppColors.primaryExtraLight,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.iconColor,
-    required this.bgColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color iconColor;
-  final Color bgColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: AppColors.subtleShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Info Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppColors.subtleShadow,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.primaryExtraLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tags Card (Medical History / Allergies)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TagsCard extends StatelessWidget {
-  const _TagsCard({
-    required this.icon,
+class _TagsEditor extends StatelessWidget {
+  const _TagsEditor({
     required this.tags,
     required this.color,
     required this.tagColor,
+    required this.icon,
+    required this.onAdd,
+    required this.onRemove,
   });
 
-  final IconData icon;
   final List<String> tags;
   final Color color;
   final Color tagColor;
+  final IconData icon;
+  final VoidCallback onAdd;
+  final void Function(int index) onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -690,163 +780,123 @@ class _TagsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: AppColors.subtleShadow,
+        border: Border.all(color: AppColors.borderGray),
       ),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: tags.map((tag) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 12, color: tagColor),
-                const SizedBox(width: 5),
-                Text(
-                  tag,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: tagColor,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Account Status Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AccountStatusCard extends StatelessWidget {
-  const _AccountStatusCard({required this.patient});
-
-  final PatientModel patient;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppColors.subtleShadow,
-      ),
-      child: Column(
         children: [
-          _StatusRow(
-            label: 'Account Status',
-            isActive: patient.isActive,
-            activeText: 'Active',
-            inactiveText: 'Inactive',
-          ),
-          const Divider(height: 20, color: AppColors.borderGray),
-          _StatusRow(
-            label: 'Verification',
-            isActive: patient.isVerified,
-            activeText: 'Verified',
-            inactiveText: 'Unverified',
-          ),
-          const Divider(height: 20, color: AppColors.borderGray),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Member Since',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
+          ...tags.asMap().entries.map((e) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(20),
               ),
-              Text(
-                _formatDate(patient.createdAt),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 12, color: tagColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    e.value,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: tagColor,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => onRemove(e.key),
+                    child: Icon(Icons.close_rounded, size: 14, color: tagColor),
+                  ),
+                ],
               ),
-            ],
+            );
+          }),
+          // Add button
+          GestureDetector(
+            onTap: onAdd,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryExtraLight,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 14, color: AppColors.primary),
+                  SizedBox(width: 4),
+                  Text(
+                    'Add',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-
-  String _formatDate(DateTime dt) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
-  }
 }
 
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({
+// ─────────────────────────────────────────────────────────────────────────────
+// Image Source Tile
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ImageSourceTile extends StatelessWidget {
+  const _ImageSourceTile({
+    required this.icon,
     required this.label,
-    required this.isActive,
-    required this.activeText,
-    required this.inactiveText,
+    required this.onTap,
   });
 
+  final IconData icon;
   final String label;
-  final bool isActive;
-  final String activeText;
-  final String inactiveText;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: AppColors.primaryExtraLight,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.successLight : AppColors.errorLight,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isActive ? AppColors.success : AppColors.error,
-                ),
+        child: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: 5),
-              Text(
-                isActive ? activeText : inactiveText,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? AppColors.success : AppColors.error,
-                ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+                fontSize: 13,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
