@@ -1,3 +1,20 @@
+// lib/views/dm_view/dm_view.dart  ·  PATIENT APP
+// ════════════════════════════════════════════════════════════════════════════
+// CHAT ROOM screen — the actual message thread with ONE doctor (text + photos).
+// Always opened with a specific doctor's info:
+//
+//   Navigator.push(context, MaterialPageRoute(
+//     builder: (_) => DmView(
+//       doctorId: doctorId,
+//       doctorName: doctorName,
+//       doctorImageUrl: doctorImageUrl,
+//     ),
+//   ));
+//
+// For the list of all conversations (shown on the bottom nav "Messages" tab),
+// see dm_list_view.dart — tapping a tile there pushes this screen.
+// ════════════════════════════════════════════════════════════════════════════
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,10 +23,20 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../models/dm_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/dm_provider.dart';
 
 class DmView extends StatefulWidget {
-  const DmView({super.key});
+  final String doctorId;
+  final String doctorName;
+  final String doctorImageUrl;
+
+  const DmView({
+    super.key,
+    required this.doctorId,
+    required this.doctorName,
+    required this.doctorImageUrl,
+  });
 
   @override
   State<DmView> createState() => _DmViewState();
@@ -21,12 +48,29 @@ class _DmViewState extends State<DmView> {
   final _picker     = ImagePicker();
   bool  _hasText    = false;
 
+  late final DmProvider _prov;
+
   @override
   void initState() {
     super.initState();
+    _prov = DmProvider();
+
     _textCtrl.addListener(() {
       final has = _textCtrl.text.trim().isNotEmpty;
       if (has != _hasText) setState(() => _hasText = has);
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final patient = context.read<PatientAuthProvider>().patient;
+      if (patient == null) return;
+      _prov.initialise(
+        patientId:       patient.patientId,
+        patientName:     patient.name,
+        patientImageUrl: patient.profileImageUrl ?? '',
+        doctorId:        widget.doctorId,
+        doctorName:      widget.doctorName,
+        doctorImageUrl:  widget.doctorImageUrl,
+      );
     });
   }
 
@@ -34,6 +78,7 @@ class _DmViewState extends State<DmView> {
   void dispose() {
     _textCtrl.dispose();
     _scrollCtrl.dispose();
+    _prov.dispose();
     super.dispose();
   }
 
@@ -109,24 +154,27 @@ class _DmViewState extends State<DmView> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DmProvider>(
-      builder: (_, prov, __) {
-        if (!prov.isLoading && prov.messages.isNotEmpty) _scrollToBottom();
+    return ChangeNotifierProvider<DmProvider>.value(
+      value: _prov,
+      child: Consumer<DmProvider>(
+        builder: (_, prov, __) {
+          if (!prov.isLoading && prov.messages.isNotEmpty) _scrollToBottom();
 
-        final conv = prov.conversation;
+          final conv = prov.conversation;
 
-        return Scaffold(
-          backgroundColor: AppColors.backgroundColor,
-          appBar: _buildAppBar(conv),
-          body: Column(
-            children: [
-              Expanded(child: _buildBody(prov, conv)),
-              if (!prov.isLoading && prov.errorMessage == null)
-                _buildInputBar(prov),
-            ],
-          ),
-        );
-      },
+          return Scaffold(
+            backgroundColor: AppColors.backgroundColor,
+            appBar: _buildAppBar(conv),
+            body: Column(
+              children: [
+                Expanded(child: _buildBody(prov, conv)),
+                if (!prov.isLoading && prov.errorMessage == null)
+                  _buildInputBar(prov),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -213,7 +261,6 @@ class _DmViewState extends State<DmView> {
   // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildBody(DmProvider prov, DmConversation? conv) {
-    // ── Loading ──────────────────────────────────────────────────────────────
     if (prov.isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -223,7 +270,6 @@ class _DmViewState extends State<DmView> {
       );
     }
 
-    // ── Error ────────────────────────────────────────────────────────────────
     if (prov.errorMessage != null) {
       return Center(
         child: Padding(
@@ -254,12 +300,10 @@ class _DmViewState extends State<DmView> {
       );
     }
 
-    // ── Empty state (no messages yet) ────────────────────────────────────────
     if (prov.messages.isEmpty) {
       return _buildEmptyState(conv!);
     }
 
-    // ── Message list ─────────────────────────────────────────────────────────
     return ListView.builder(
       controller: _scrollCtrl,
       physics: const ClampingScrollPhysics(),
@@ -404,7 +448,6 @@ class _DmViewState extends State<DmView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Attach (photo) button
           IconButton(
             onPressed: prov.isUploadingImage
                 ? null
@@ -419,7 +462,6 @@ class _DmViewState extends State<DmView> {
                 : const Icon(Icons.add_photo_alternate_rounded,
                     color: AppColors.primary, size: 24),
           ),
-          // Text field
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxHeight: 120),
@@ -450,7 +492,6 @@ class _DmViewState extends State<DmView> {
             ),
           ),
           const SizedBox(width: 8),
-          // Send button
           AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             width: 44,
@@ -654,9 +695,7 @@ class _MessageBubble extends StatelessWidget {
 
   Widget _buildTextBubble() {
     return Container(
-      constraints: BoxConstraints(
-        maxWidth: 280,
-      ),
+      constraints: const BoxConstraints(maxWidth: 280),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         gradient: isMe ? AppColors.orangeGradient : null,

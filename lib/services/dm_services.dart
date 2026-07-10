@@ -172,9 +172,18 @@ class DmService {
           .map((s) => s.docs.map(DmMessage.fromFirestore).toList());
 
   /// Real-time stream of all conversations for a patient, newest first.
+  ///
+  /// IMPORTANT: this filters on `participantIds` (array-contains) rather
+  /// than `patientId` (==). Firestore security rules for `list` queries
+  /// must be statically verifiable from the query itself — since our rule
+  /// checks `request.auth.uid in resource.data.participantIds`, the query
+  /// has to filter on that *same* field, or Firestore denies the whole
+  /// request with PERMISSION_DENIED (it can't retroactively confirm that
+  /// `patientId == uid` implies `uid` is in `participantIds`, even though
+  /// that's always true by construction).
   Stream<List<DmConversation>> conversationsStream(String patientId) =>
       _conversations
-          .where('patientId', isEqualTo: patientId)
+          .where('participantIds', arrayContains: patientId)
           .orderBy('lastMessageAt', descending: true)
           .snapshots()
           .map((s) => s.docs.map(DmConversation.fromFirestore).toList());

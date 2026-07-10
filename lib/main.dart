@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
+import 'providers/dm_list_provider.dart';
 import 'providers/fetch_dr_provider.dart';
 import 'providers/homegig_provider.dart';
 import 'widgets/auth_wrapper.dart';
@@ -26,6 +27,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => HomeGigProvider()),
         ChangeNotifierProvider(create: (_) => DoctorProvider()),
         ChangeNotifierProvider(create: (_) => DmProvider()),
+        ChangeNotifierProvider(create: (_) => DmListProvider()),
+
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

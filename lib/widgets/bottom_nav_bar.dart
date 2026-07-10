@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/theme/app_colors.dart';
-import '../views/dm_view/dm_view.dart';
+import '../views/dm_view/dm_list_view.dart';   // ← CHANGED: was dm_view.dart
 import '../views/profile/profile_view.dart';
 
 class MainScreen extends StatefulWidget {
@@ -23,7 +23,9 @@ class _MainScreenState extends State<MainScreen> {
   // ── Screens ───────────────────────────────────────────────────────────────
   final List<Widget> _screens = [
     const HomeView(),
-    const DmView(),
+    const DmListView(),   // ← CHANGED: was const DmView() — that's now a
+                           //   chat-room screen that requires a doctorId,
+                           //   so it can't live directly in the bottom nav.
     const SearchView(),
     const DoctorsView(),
     const AppointmentsView(),

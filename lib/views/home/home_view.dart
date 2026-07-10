@@ -14,7 +14,7 @@ import '../../providers/homegig_provider.dart';
 import '../../providers/gig_details_provider.dart';
 import '../../providers/dm_provider.dart';
 import '../details_screens/gigs_details_view.dart';
-import '../dm_view/dm_view.dart';
+import '../dm_view/dm_list_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -122,7 +122,7 @@ class _HomeViewState extends State<HomeView> {
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider.value(
           value: dmProv,
-          child: const DmView(),
+          child: const DmListView(),
         ),
       ),
     );
