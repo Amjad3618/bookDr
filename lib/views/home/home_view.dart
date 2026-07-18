@@ -13,8 +13,10 @@ import '../../providers/auth_provider.dart';
 import '../../providers/homegig_provider.dart';
 import '../../providers/gig_details_provider.dart';
 import '../../providers/dm_provider.dart';
+import '../../providers/order_provider.dart';
 import '../details_screens/gigs_details_view.dart';
 import '../dm_view/dm_list_view.dart';
+import '../order/order_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -32,35 +34,43 @@ class _HomeViewState extends State<HomeView> {
 
   Color _typeColor(String type) {
     switch (type) {
-      case 'Video Call':         return const Color(0xFF2563EB);
-      case 'Chat / Messaging':   return const Color(0xFF059669);
-      case 'Report Review Only': return const Color(0xFFD97706);
-      default:                   return AppColors.primary;
+      case 'Video Call':
+        return const Color(0xFF2563EB);
+      case 'Chat / Messaging':
+        return const Color(0xFF059669);
+      case 'Report Review Only':
+        return const Color(0xFFD97706);
+      default:
+        return AppColors.primary;
     }
   }
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'Video Call':         return Icons.videocam_rounded;
-      case 'Chat / Messaging':   return Icons.chat_bubble_rounded;
-      case 'Report Review Only': return Icons.description_rounded;
-      default:                   return Icons.medical_services_rounded;
+      case 'Video Call':
+        return Icons.videocam_rounded;
+      case 'Chat / Messaging':
+        return Icons.chat_bubble_rounded;
+      case 'Report Review Only':
+        return Icons.description_rounded;
+      default:
+        return Icons.medical_services_rounded;
     }
   }
 
   IconData _catIcon(String cat) {
     const map = <String, IconData>{
-      'All':         Icons.grid_view_rounded,
-      'Cardiology':  Icons.favorite_rounded,
+      'All': Icons.grid_view_rounded,
+      'Cardiology': Icons.favorite_rounded,
       'Diagnostics': Icons.biotech_rounded,
-      'Lifestyle':   Icons.self_improvement_rounded,
-      'Pediatrics':  Icons.child_care_rounded,
-      'General':     Icons.local_hospital_rounded,
-      'Psychiatry':  Icons.psychology_rounded,
-      'Neurology':   Icons.psychology_outlined,
+      'Lifestyle': Icons.self_improvement_rounded,
+      'Pediatrics': Icons.child_care_rounded,
+      'General': Icons.local_hospital_rounded,
+      'Psychiatry': Icons.psychology_rounded,
+      'Neurology': Icons.psychology_outlined,
       'Orthopedics': Icons.accessibility_new_rounded,
       'Dermatology': Icons.face_rounded,
-      'Dentistry':   Icons.medical_services_rounded,
+      'Dentistry': Icons.medical_services_rounded,
     };
     return map[cat] ?? Icons.medical_services_rounded;
   }
@@ -109,12 +119,12 @@ class _HomeViewState extends State<HomeView> {
     // call starts during the navigation animation, not after.
     final dmProv = DmProvider();
     dmProv.initialise(
-      patientId:       patient.patientId,
-      patientName:     patient.name,
+      patientId: patient.patientId,
+      patientName: patient.name,
       patientImageUrl: patient.profileImageUrl ?? '',
-      doctorId:        gig.drId,
-      doctorName:      gig.drName,
-      doctorImageUrl:  gig.drImageUrl,
+      doctorId: gig.drId,
+      doctorName: gig.drName,
+      doctorImageUrl: gig.drImageUrl,
     );
 
     Navigator.push(
@@ -124,6 +134,31 @@ class _HomeViewState extends State<HomeView> {
           value: dmProv,
           child: const DmListView(),
         ),
+      ),
+    );
+  }
+
+  // ── Book Now → pick a package, then open the booking flow ─────────────────
+  void _openBooking(GigModel gig) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _PackagePickerSheet(
+        gig: gig,
+        onSelect: (packageType) {
+          Navigator.pop(context); // close the sheet
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => BookingProvider(),
+                child: BookingView(gig: gig, packageType: packageType),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -154,7 +189,8 @@ class _HomeViewState extends State<HomeView> {
                   color: Colors.white.withOpacity(0.25),
                 ),
                 child: ClipOval(
-                  child: prov.patientImageUrl != null &&
+                  child:
+                      prov.patientImageUrl != null &&
                           prov.patientImageUrl!.isNotEmpty
                       ? Image.network(
                           prov.patientImageUrl!,
@@ -291,14 +327,19 @@ class _HomeViewState extends State<HomeView> {
       child: Row(
         children: [
           const SizedBox(width: 14),
-          const Icon(Icons.search_rounded,
-              color: AppColors.textSecondary, size: 20),
+          const Icon(
+            Icons.search_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchCtrl,
               style: const TextStyle(
-                  fontSize: 14, color: AppColors.textPrimary),
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
               onChanged: prov.onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search doctors, specialties, services…',
@@ -319,8 +360,11 @@ class _HomeViewState extends State<HomeView> {
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.close_rounded,
-                    color: AppColors.textSecondary, size: 18),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: AppColors.textSecondary,
+                  size: 18,
+                ),
               ),
             )
           else
@@ -344,7 +388,7 @@ class _HomeViewState extends State<HomeView> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: prov.categories.length,
           itemBuilder: (_, i) {
-            final cat      = prov.categories[i];
+            final cat = prov.categories[i];
             final selected = prov.selectedCategory == cat;
             return GestureDetector(
               onTap: () {
@@ -355,14 +399,14 @@ class _HomeViewState extends State<HomeView> {
                 duration: const Duration(milliseconds: 180),
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: selected ? AppColors.primary : AppColors.surface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.borderGray,
+                    color: selected ? AppColors.primary : AppColors.borderGray,
                   ),
                   boxShadow: selected
                       ? [
@@ -377,11 +421,11 @@ class _HomeViewState extends State<HomeView> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(_catIcon(cat),
-                        size: 13,
-                        color: selected
-                            ? Colors.white
-                            : AppColors.textSecondary),
+                    Icon(
+                      _catIcon(cat),
+                      size: 13,
+                      color: selected ? Colors.white : AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 5),
                     Text(
                       cat,
@@ -432,8 +476,7 @@ class _HomeViewState extends State<HomeView> {
           ),
           if (!prov.isLoading && prov.gigs.isNotEmpty)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.primaryExtraLight,
                 borderRadius: BorderRadius.circular(10),
@@ -482,14 +525,155 @@ class _HomeViewState extends State<HomeView> {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (_, i) => _GigTile(
-          gig:       prov.gigs[i],
+          gig: prov.gigs[i],
           typeColor: _typeColor(prov.gigs[i].consultationTypeStr),
-          typeIcon:  _typeIcon(prov.gigs[i].consultationTypeStr),
+          typeIcon: _typeIcon(prov.gigs[i].consultationTypeStr),
           onTapCard: () => _openGigDetails(prov.gigs[i]),
-          onChat:    () => _openDmChat(prov.gigs[i]),   // ← DM wired here
-          onBook:    () => _openGigDetails(prov.gigs[i]),
+          onChat: () => _openDmChat(prov.gigs[i]),
+          onBook: () => _openBooking(prov.gigs[i]), // ← Booking wired here
         ),
         childCount: prov.gigs.length,
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PACKAGE PICKER SHEET  (Book Now → choose Basic/Standard/Premium)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _PackagePickerSheet extends StatelessWidget {
+  final GigModel gig;
+  final ValueChanged<String> onSelect; // 'basic' | 'standard' | 'premium'
+
+  const _PackagePickerSheet({required this.gig, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final pkgs = [
+      (
+        'basic',
+        gig.basicPackage,
+        const Color(0xFF2563EB),
+        const Color(0xFFEFF6FF),
+      ),
+      (
+        'standard',
+        gig.standardPackage,
+        AppColors.primary,
+        AppColors.primaryExtraLight,
+      ),
+      (
+        'premium',
+        gig.premiumPackage,
+        const Color(0xFFD97706),
+        const Color(0xFFFEF3C7),
+      ),
+    ];
+
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.borderGray,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const Text(
+              'Choose a package',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Dr. ${gig.drName} · ${gig.title}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            ...pkgs.map((p) {
+              final type = p.$1;
+              final pkg = p.$2;
+              final color = p.$3;
+              final bg = p.$4;
+              return GestureDetector(
+                onTap: () => onSelect(type),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: color.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              pkg.name.isNotEmpty ? pkg.name : type,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: color,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              pkg.deliveryTime,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: color.withOpacity(0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Rs. ${pkg.price.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: color,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -500,9 +684,9 @@ class _HomeViewState extends State<HomeView> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _GigTile extends StatelessWidget {
-  final GigModel     gig;
-  final Color        typeColor;
-  final IconData     typeIcon;
+  final GigModel gig;
+  final Color typeColor;
+  final IconData typeIcon;
   final VoidCallback onTapCard;
   final VoidCallback onChat;
   final VoidCallback onBook;
@@ -554,9 +738,10 @@ class _GigTile extends StatelessWidget {
                       _buildPackagesRow(),
                       const SizedBox(height: 12),
                       Divider(
-                          color: AppColors.borderGray,
-                          thickness: 0.8,
-                          height: 1),
+                        color: AppColors.borderGray,
+                        thickness: 0.8,
+                        height: 1,
+                      ),
                       const SizedBox(height: 12),
                       _buildBottomRow(),
                     ],
@@ -597,8 +782,7 @@ class _GigTile extends StatelessWidget {
               top: 12,
               left: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFD97706),
                   borderRadius: BorderRadius.circular(8),
@@ -649,8 +833,11 @@ class _GigTile extends StatelessWidget {
                   ),
                   if (gig.drIsVerified) ...[
                     const SizedBox(width: 4),
-                    const Icon(Icons.verified_rounded,
-                        color: Color(0xFF2563EB), size: 15),
+                    const Icon(
+                      Icons.verified_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 15,
+                    ),
                   ],
                 ],
               ),
@@ -658,7 +845,9 @@ class _GigTile extends StatelessWidget {
               Text(
                 gig.drSpecialty,
                 style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -668,124 +857,140 @@ class _GigTile extends StatelessWidget {
   }
 
   Widget _avatar() => Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: AppColors.primaryExtraLight,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: gig.drImageUrl.isNotEmpty
-              ? Image.network(
-                  gig.drImageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.person_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                )
-              : const Icon(Icons.person_rounded,
-                  color: AppColors.primary, size: 22),
-        ),
-      );
+    width: 44,
+    height: 44,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      color: AppColors.primaryExtraLight,
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: gig.drImageUrl.isNotEmpty
+          ? Image.network(
+              gig.drImageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.person_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+            )
+          : const Icon(
+              Icons.person_rounded,
+              color: AppColors.primary,
+              size: 22,
+            ),
+    ),
+  );
 
   Widget _buildTitle() => Text(
-        gig.fullTitle,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-          height: 1.3,
-        ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      );
+    gig.fullTitle,
+    style: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textPrimary,
+      height: 1.3,
+    ),
+    maxLines: 2,
+    overflow: TextOverflow.ellipsis,
+  );
 
   Widget _buildMetaRow() => Row(
-        children: [
-          if (gig.drRating > 0) ...[
-            const Icon(Icons.star_rounded,
-                size: 13, color: Color(0xFFF59E0B)),
-            const SizedBox(width: 3),
-            Text(
-              gig.drRating.toStringAsFixed(1),
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              ' (${gig.totalReviews})',
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary),
-            ),
-            const SizedBox(width: 10),
-          ],
-          if (gig.totalOrders > 0) ...[
-            const Icon(Icons.shopping_bag_outlined,
-                size: 12, color: AppColors.textSecondary),
-            const SizedBox(width: 3),
-            Text(
-              '${gig.totalOrders} orders',
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary),
-            ),
-          ],
-        ],
-      );
+    children: [
+      if (gig.drRating > 0) ...[
+        const Icon(Icons.star_rounded, size: 13, color: Color(0xFFF59E0B)),
+        const SizedBox(width: 3),
+        Text(
+          gig.drRating.toStringAsFixed(1),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        Text(
+          ' (${gig.totalReviews})',
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+        const SizedBox(width: 10),
+      ],
+      if (gig.totalOrders > 0) ...[
+        const Icon(
+          Icons.shopping_bag_outlined,
+          size: 12,
+          color: AppColors.textSecondary,
+        ),
+        const SizedBox(width: 3),
+        Text(
+          '${gig.totalOrders} orders',
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+      ],
+    ],
+  );
 
   Widget _buildTypeTags() => Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          _tag(typeIcon, gig.consultationTypeStr, typeColor),
-          _tag(Icons.grid_view_rounded, gig.category,
-              AppColors.textSecondary),
-          if (gig.hasPmdcUploaded)
-            _tag(Icons.verified_rounded, 'PMDC Verified',
-                const Color(0xFF059669)),
-        ],
-      );
+    spacing: 6,
+    runSpacing: 6,
+    children: [
+      _tag(typeIcon, gig.consultationTypeStr, typeColor),
+      _tag(Icons.grid_view_rounded, gig.category, AppColors.textSecondary),
+      if (gig.hasPmdcUploaded)
+        _tag(Icons.verified_rounded, 'PMDC Verified', const Color(0xFF059669)),
+    ],
+  );
 
   Widget _tag(IconData icon, String label, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withOpacity(0.3)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 10, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 10, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   Widget _buildPackagesRow() {
     final pkgs = [
-      (gig.basicPackage,    const Color(0xFF2563EB), const Color(0xFFEFF6FF), 'Basic'),
-      (gig.standardPackage, AppColors.primary,        AppColors.primaryExtraLight, 'Standard'),
-      (gig.premiumPackage,  const Color(0xFFD97706), const Color(0xFFFEF3C7), 'Premium'),
+      (
+        gig.basicPackage,
+        const Color(0xFF2563EB),
+        const Color(0xFFEFF6FF),
+        'Basic',
+      ),
+      (
+        gig.standardPackage,
+        AppColors.primary,
+        AppColors.primaryExtraLight,
+        'Standard',
+      ),
+      (
+        gig.premiumPackage,
+        const Color(0xFFD97706),
+        const Color(0xFFFEF3C7),
+        'Premium',
+      ),
     ];
     return Row(
       children: pkgs.asMap().entries.map((e) {
-        final i    = e.key;
-        final pkg  = e.value.$1;
-        final col  = e.value.$2;
-        final bg   = e.value.$3;
+        final i = e.key;
+        final pkg = e.value.$1;
+        final col = e.value.$2;
+        final bg = e.value.$3;
         final name = e.value.$4;
         return Expanded(
           child: Container(
@@ -798,23 +1003,28 @@ class _GigTile extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Text(name,
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: col)),
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: col,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   'Rs. ${pkg.price.toStringAsFixed(0)}',
                   style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: col),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: col,
+                  ),
                 ),
                 const SizedBox(height: 1),
-                Text(pkg.deliveryTime,
-                    style: TextStyle(
-                        fontSize: 9, color: col.withOpacity(0.75))),
+                Text(
+                  pkg.deliveryTime,
+                  style: TextStyle(fontSize: 9, color: col.withOpacity(0.75)),
+                ),
               ],
             ),
           ),
@@ -824,71 +1034,74 @@ class _GigTile extends StatelessWidget {
   }
 
   Widget _buildBottomRow() => Row(
+    children: [
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Starting from',
-                  style: TextStyle(
-                      fontSize: 10, color: AppColors.textSecondary)),
-              const SizedBox(height: 1),
-              Text(
-                'Rs. ${gig.startingPrice.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
+          const Text(
+            'Starting from',
+            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
           ),
-          const Spacer(),
-          GestureDetector(
-            onTap: onChat,
-            child: Container(
-              height: 40,
-              width: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primaryExtraLight,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: AppColors.primary.withOpacity(0.25)),
-              ),
-              child: const Icon(Icons.chat_bubble_outline_rounded,
-                  color: AppColors.primary, size: 18),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onBook,
-            child: Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              decoration: BoxDecoration(
-                gradient: AppColors.orangeGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Text(
-                  'Book Now',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+          const SizedBox(height: 1),
+          Text(
+            'Rs. ${gig.startingPrice.toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
             ),
           ),
         ],
-      );
+      ),
+      const Spacer(),
+      GestureDetector(
+        onTap: onChat,
+        child: Container(
+          height: 40,
+          width: 40,
+          decoration: BoxDecoration(
+            color: AppColors.primaryExtraLight,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+          ),
+          child: const Icon(
+            Icons.chat_bubble_outline_rounded,
+            color: AppColors.primary,
+            size: 18,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      GestureDetector(
+        onTap: onBook,
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          decoration: BoxDecoration(
+            gradient: AppColors.orangeGradient,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Text(
+              'Book Now',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -904,7 +1117,7 @@ class _GigTileSkeleton extends StatefulWidget {
 class _GigTileSkeletonState extends State<_GigTileSkeleton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double>   _anim;
+  late Animation<double> _anim;
 
   @override
   void initState() {
@@ -913,8 +1126,10 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 0.9)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(
+      begin: 0.4,
+      end: 0.9,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -944,7 +1159,8 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
                 decoration: BoxDecoration(
                   color: AppColors.borderGray,
                   borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20)),
+                    top: Radius.circular(20),
+                  ),
                 ),
               ),
               Padding(
@@ -997,13 +1213,13 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
   }
 
   Widget _sh(double h, double w, {double r = 6}) => Container(
-        height: h,
-        width: w,
-        decoration: BoxDecoration(
-          color: AppColors.borderGray,
-          borderRadius: BorderRadius.circular(r),
-        ),
-      );
+    height: h,
+    width: w,
+    decoration: BoxDecoration(
+      color: AppColors.borderGray,
+      borderRadius: BorderRadius.circular(r),
+    ),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1011,56 +1227,60 @@ class _GigTileSkeletonState extends State<_GigTileSkeleton>
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _ErrorRetry extends StatelessWidget {
-  final String       message;
+  final String message;
   final VoidCallback onRetry;
   const _ErrorRetry({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
-        child: Column(
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.errorLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.wifi_off_rounded,
-                  color: AppColors.error, size: 36),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  height: 1.5),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: onRetry,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 28, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: AppColors.orangeGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Try again',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
+    child: Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.errorLight,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.wifi_off_rounded,
+            color: AppColors.error,
+            size: 36,
+          ),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 20),
+        GestureDetector(
+          onTap: onRetry,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.orangeGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'Try again',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1072,30 +1292,34 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 70, horizontal: 32),
-        child: Column(
-          children: [
-            Icon(Icons.search_off_rounded,
-                color: AppColors.textSecondary, size: 52),
-            SizedBox(height: 14),
-            Text(
-              'No doctors found',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: 6),
-            Text(
-              'Try a different search or category.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  height: 1.5),
-            ),
-          ],
+    padding: EdgeInsets.symmetric(vertical: 70, horizontal: 32),
+    child: Column(
+      children: [
+        Icon(
+          Icons.search_off_rounded,
+          color: AppColors.textSecondary,
+          size: 52,
         ),
-      );
+        SizedBox(height: 14),
+        Text(
+          'No doctors found',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          'Try a different search or category.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +5,8 @@ import 'package:bookdr/core/theme/app_colors.dart';
 
 import '../../models/dr_model.dart';
 import '../../providers/gig_details_provider.dart';
+import '../../providers/order_provider.dart';
+import '../order/order_view.dart';
 
 class GigDetailsView extends StatefulWidget {
   final GigModel gig;
@@ -17,11 +17,11 @@ class GigDetailsView extends StatefulWidget {
 }
 
 class _GigDetailsViewState extends State<GigDetailsView> {
-  final _scrollCtrl   = ScrollController();
-  final _pageCtrl     = PageController();
-  bool  _showSticky   = false;
-  bool  _isFavorited  = false;
-  int   _galleryPage  = 0;
+  final _scrollCtrl = ScrollController();
+  final _pageCtrl = PageController();
+  bool _showSticky = false;
+  bool _isFavorited = false;
+  int _galleryPage = 0;
 
   @override
   void initState() {
@@ -53,19 +53,27 @@ class _GigDetailsViewState extends State<GigDetailsView> {
 
   Color _typeColor(String type) {
     switch (type) {
-      case 'Video Call':         return const Color(0xFF2563EB);
-      case 'Chat / Messaging':   return const Color(0xFF059669);
-      case 'Report Review Only': return const Color(0xFFD97706);
-      default:                   return AppColors.primary;
+      case 'Video Call':
+        return const Color(0xFF2563EB);
+      case 'Chat / Messaging':
+        return const Color(0xFF059669);
+      case 'Report Review Only':
+        return const Color(0xFFD97706);
+      default:
+        return AppColors.primary;
     }
   }
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'Video Call':         return Icons.videocam_rounded;
-      case 'Chat / Messaging':   return Icons.chat_bubble_rounded;
-      case 'Report Review Only': return Icons.description_rounded;
-      default:                   return Icons.medical_services_rounded;
+      case 'Video Call':
+        return Icons.videocam_rounded;
+      case 'Chat / Messaging':
+        return Icons.chat_bubble_rounded;
+      case 'Report Review Only':
+        return Icons.description_rounded;
+      default:
+        return Icons.medical_services_rounded;
     }
   }
 
@@ -101,8 +109,10 @@ class _GigDetailsViewState extends State<GigDetailsView> {
               right: 12,
               child: Row(
                 children: [
-                  _overlayBtn(Icons.arrow_back_ios_new_rounded,
-                      () => Navigator.pop(context)),
+                  _overlayBtn(
+                    Icons.arrow_back_ios_new_rounded,
+                    () => Navigator.pop(context),
+                  ),
                   const Spacer(),
                   _overlayBtn(
                     _isFavorited
@@ -115,8 +125,10 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                     color: _isFavorited ? Colors.red : Colors.white,
                   ),
                   const SizedBox(width: 8),
-                  _overlayBtn(Icons.share_outlined,
-                      () => HapticFeedback.lightImpact()),
+                  _overlayBtn(
+                    Icons.share_outlined,
+                    () => HapticFeedback.lightImpact(),
+                  ),
                 ],
               ),
             ),
@@ -225,7 +237,9 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                     right: 14,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(20),
@@ -233,9 +247,10 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                       child: Text(
                         '${_galleryPage + 1} / ${images.length}',
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600),
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -245,7 +260,9 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                     right: 16,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         gradient: AppColors.orangeGradient,
                         borderRadius: BorderRadius.circular(20),
@@ -253,8 +270,11 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.star_rounded,
-                              color: Colors.white, size: 12),
+                          Icon(
+                            Icons.star_rounded,
+                            color: Colors.white,
+                            size: 12,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             'FEATURED',
@@ -311,8 +331,11 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             color: AppColors.primaryExtraLight,
-                            child: const Icon(Icons.image_rounded,
-                                size: 16, color: AppColors.primary),
+                            child: const Icon(
+                              Icons.image_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ),
@@ -327,18 +350,21 @@ class _GigDetailsViewState extends State<GigDetailsView> {
   }
 
   Widget _coverPlaceholder() => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primaryDark, AppColors.primary],
-          ),
-        ),
-        child: const Center(
-          child: Icon(Icons.medical_services_rounded,
-              color: Colors.white54, size: 72),
-        ),
-      );
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppColors.primaryDark, AppColors.primary],
+      ),
+    ),
+    child: const Center(
+      child: Icon(
+        Icons.medical_services_rounded,
+        color: Colors.white54,
+        size: 72,
+      ),
+    ),
+  );
 
   Widget _overlayBtn(IconData icon, VoidCallback onTap, {Color? color}) =>
       GestureDetector(
@@ -349,8 +375,7 @@ class _GigDetailsViewState extends State<GigDetailsView> {
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.35),
             shape: BoxShape.circle,
-            border:
-                Border.all(color: Colors.white.withOpacity(0.15), width: 1),
+            border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
           ),
           child: Icon(icon, color: color ?? Colors.white, size: 18),
         ),
@@ -360,22 +385,30 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     return Container(
       color: AppColors.surface,
       padding: EdgeInsets.fromLTRB(
-          16, MediaQuery.of(context).padding.top + 8, 16, 12),
+        16,
+        MediaQuery.of(context).padding.top + 8,
+        16,
+        12,
+      ),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: AppColors.textPrimary, size: 20),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppColors.textPrimary,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               gig.fullTitle,
               style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -389,9 +422,10 @@ class _GigDetailsViewState extends State<GigDetailsView> {
             child: Text(
               'Rs. ${gig.basicPackage.price.toStringAsFixed(0)}',
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold),
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -420,19 +454,27 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                   borderRadius: BorderRadius.circular(16),
                   color: AppColors.primaryExtraLight,
                   border: Border.all(
-                      color: AppColors.primary.withOpacity(0.2), width: 2),
+                    color: AppColors.primary.withOpacity(0.2),
+                    width: 2,
+                  ),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: gig.drImageUrl.isNotEmpty
-                      ? Image.network(gig.drImageUrl,
+                      ? Image.network(
+                          gig.drImageUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const Icon(
-                              Icons.person_rounded,
-                              color: AppColors.primary,
-                              size: 30))
-                      : const Icon(Icons.person_rounded,
-                          color: AppColors.primary, size: 30),
+                            Icons.person_rounded,
+                            color: AppColors.primary,
+                            size: 30,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person_rounded,
+                          color: AppColors.primary,
+                          size: 30,
+                        ),
                 ),
               ),
               if (gig.drIsVerified)
@@ -447,8 +489,11 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),
-                    child: const Icon(Icons.check_rounded,
-                        color: Colors.white, size: 11),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 11,
+                    ),
                   ),
                 ),
             ],
@@ -458,16 +503,23 @@ class _GigDetailsViewState extends State<GigDetailsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(gig.drName,
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary),
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  gig.drName,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 2),
-                Text(gig.drSpecialty,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
+                Text(
+                  gig.drSpecialty,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 if (gig.drRating > 0)
                   Row(
@@ -478,8 +530,8 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                           i < gig.drRating.floor()
                               ? Icons.star_rounded
                               : (i < gig.drRating
-                                  ? Icons.star_half_rounded
-                                  : Icons.star_outline_rounded),
+                                    ? Icons.star_half_rounded
+                                    : Icons.star_outline_rounded),
                           size: 13,
                           color: const Color(0xFFF59E0B),
                         ),
@@ -488,9 +540,10 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                       Text(
                         '${gig.drRating.toStringAsFixed(1)} (${gig.totalReviews})',
                         style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -500,8 +553,7 @@ class _GigDetailsViewState extends State<GigDetailsView> {
           GestureDetector(
             onTap: () => HapticFeedback.selectionClick(),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 gradient: AppColors.orangeGradient,
                 borderRadius: BorderRadius.circular(12),
@@ -513,11 +565,14 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                   ),
                 ],
               ),
-              child: const Text('View Profile',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+              child: const Text(
+                'View Profile',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ],
@@ -552,20 +607,34 @@ class _GigDetailsViewState extends State<GigDetailsView> {
             spacing: 7,
             runSpacing: 7,
             children: [
-              _tag(_typeIcon(gig.consultationTypeStr),
-                  gig.consultationTypeStr,
-                  _typeColor(gig.consultationTypeStr)),
-              _tag(Icons.grid_view_rounded, gig.category,
-                  AppColors.textSecondary),
+              _tag(
+                _typeIcon(gig.consultationTypeStr),
+                gig.consultationTypeStr,
+                _typeColor(gig.consultationTypeStr),
+              ),
+              _tag(
+                Icons.grid_view_rounded,
+                gig.category,
+                AppColors.textSecondary,
+              ),
               if (gig.subcategory.isNotEmpty)
-                _tag(Icons.label_outline_rounded, gig.subcategory,
-                    AppColors.textSecondary),
+                _tag(
+                  Icons.label_outline_rounded,
+                  gig.subcategory,
+                  AppColors.textSecondary,
+                ),
               if (gig.hasPmdcUploaded)
-                _tag(Icons.verified_rounded, 'PMDC Verified',
-                    const Color(0xFF059669)),
+                _tag(
+                  Icons.verified_rounded,
+                  'PMDC Verified',
+                  const Color(0xFF059669),
+                ),
               if (gig.hasDegreeUploaded)
-                _tag(Icons.school_rounded, 'Degree Verified',
-                    const Color(0xFF7C3AED)),
+                _tag(
+                  Icons.school_rounded,
+                  'Degree Verified',
+                  const Color(0xFF7C3AED),
+                ),
             ],
           ),
           if (gig.totalOrders > 0) ...[
@@ -574,11 +643,17 @@ class _GigDetailsViewState extends State<GigDetailsView> {
             const SizedBox(height: 12),
             Row(
               children: [
-                _statChip(Icons.shopping_bag_outlined,
-                    '${gig.totalOrders} orders', AppColors.primary),
+                _statChip(
+                  Icons.shopping_bag_outlined,
+                  '${gig.totalOrders} orders',
+                  AppColors.primary,
+                ),
                 const SizedBox(width: 10),
-                _statChip(Icons.visibility_outlined,
-                    '${gig.totalViews} views', AppColors.textSecondary),
+                _statChip(
+                  Icons.visibility_outlined,
+                  '${gig.totalViews} views',
+                  AppColors.textSecondary,
+                ),
               ],
             ),
           ],
@@ -588,38 +663,44 @@ class _GigDetailsViewState extends State<GigDetailsView> {
   }
 
   Widget _tag(IconData icon, String label, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.25)),
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withOpacity(0.25)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 11, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 11, color: color),
-            const SizedBox(width: 4),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: color)),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   Widget _statChip(IconData icon, String label, Color color) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 13, color: color),
+      const SizedBox(width: 4),
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: color,
+        ),
+      ),
+    ],
+  );
 
   void _openImageViewer(List<String> images, int index) {
     Navigator.push(
@@ -634,19 +715,20 @@ class _GigDetailsViewState extends State<GigDetailsView> {
   }
 
   Widget _buildDescriptionSection(GigModel gig) => _sectionCard(
-        icon: Icons.description_outlined,
-        title: 'About This Service',
-        child: Text(
-          gig.description,
-          style: const TextStyle(
-              fontSize: 13.5,
-              color: AppColors.textSecondary,
-              height: 1.7),
-        ),
-      );
+    icon: Icons.description_outlined,
+    title: 'About This Service',
+    child: Text(
+      gig.description,
+      style: const TextStyle(
+        fontSize: 13.5,
+        color: AppColors.textSecondary,
+        height: 1.7,
+      ),
+    ),
+  );
 
   Widget _buildPackagesSection(GigModel gig) {
-    final pkgNames  = ['Basic', 'Standard', 'Premium'];
+    final pkgNames = ['Basic', 'Standard', 'Premium'];
     final pkgColors = [
       const Color(0xFF2563EB),
       AppColors.primary,
@@ -692,7 +774,7 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                                     color: pkgColors[i].withOpacity(0.3),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
-                                  )
+                                  ),
                                 ]
                               : [],
                         ),
@@ -747,8 +829,12 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     );
   }
 
-  Widget _buildPackageDetail(GigPackage pkg, Color color, Color bg,
-      {Key? key}) {
+  Widget _buildPackageDetail(
+    GigPackage pkg,
+    Color color,
+    Color bg, {
+    Key? key,
+  }) {
     return Container(
       key: key,
       padding: const EdgeInsets.all(16),
@@ -766,18 +852,24 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(pkg.name,
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: color)),
+                    Text(
+                      pkg.name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
                     if (pkg.description.isNotEmpty) ...[
                       const SizedBox(height: 3),
-                      Text(pkg.description,
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              height: 1.4)),
+                      Text(
+                        pkg.description,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -785,7 +877,9 @@ class _GigDetailsViewState extends State<GigDetailsView> {
               const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(12),
@@ -800,9 +894,10 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                 child: Text(
                   'Rs. ${pkg.price.toStringAsFixed(0)}',
                   style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -816,12 +911,17 @@ class _GigDetailsViewState extends State<GigDetailsView> {
             ),
             child: Row(
               children: [
-                Expanded(child: _pkgMeta(Icons.access_time_rounded,
-                    pkg.deliveryTime, color)),
-                Container(
-                    width: 1, height: 24, color: color.withOpacity(0.2)),
-                Expanded(child: _pkgMeta(Icons.refresh_rounded,
-                    pkg.revisions, color)),
+                Expanded(
+                  child: _pkgMeta(
+                    Icons.access_time_rounded,
+                    pkg.deliveryTime,
+                    color,
+                  ),
+                ),
+                Container(width: 1, height: 24, color: color.withOpacity(0.2)),
+                Expanded(
+                  child: _pkgMeta(Icons.refresh_rounded, pkg.revisions, color),
+                ),
               ],
             ),
           ),
@@ -841,16 +941,18 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                         color: color.withOpacity(0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.check_rounded,
-                          size: 11, color: color),
+                      child: Icon(Icons.check_rounded, size: 11, color: color),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(f,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                              height: 1.4)),
+                      child: Text(
+                        f,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.4,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -863,64 +965,83 @@ class _GigDetailsViewState extends State<GigDetailsView> {
   }
 
   Widget _pkgMeta(IconData icon, String label, Color color) => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: color),
-                overflow: TextOverflow.ellipsis),
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Icon(icon, size: 13, color: color),
+      const SizedBox(width: 5),
+      Flexible(
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
           ),
-        ],
-      );
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
 
   Widget _buildRequirementsSection(GigModel gig) => _sectionCard(
-        icon: Icons.checklist_rounded,
-        title: 'What You Need to Provide',
-        child: Text(gig.requirements,
-            style: const TextStyle(
-                fontSize: 13.5,
-                color: AppColors.textSecondary,
-                height: 1.7)),
-      );
+    icon: Icons.checklist_rounded,
+    title: 'What You Need to Provide',
+    child: Text(
+      gig.requirements,
+      style: const TextStyle(
+        fontSize: 13.5,
+        color: AppColors.textSecondary,
+        height: 1.7,
+      ),
+    ),
+  );
 
   Widget _buildFaqSection(GigModel gig) => _sectionCard(
-        icon: Icons.help_outline_rounded,
-        title: 'Frequently Asked Questions',
-        child: Column(
-          children: gig.faqs
-              .asMap()
-              .entries
-              .map((e) => _FaqTile(index: e.key, faq: e.value))
-              .toList(),
-        ),
-      );
+    icon: Icons.help_outline_rounded,
+    title: 'Frequently Asked Questions',
+    child: Column(
+      children: gig.faqs
+          .asMap()
+          .entries
+          .map((e) => _FaqTile(index: e.key, faq: e.value))
+          .toList(),
+    ),
+  );
 
   Widget _buildStatsSection(GigModel gig) => _sectionCard(
-        icon: Icons.bar_chart_rounded,
-        title: 'Service Stats',
-        child: Row(
-          children: [
-            Expanded(
-                child: _statCard(Icons.shopping_bag_outlined,
-                    '${gig.totalOrders}', 'Orders', AppColors.primary)),
-            const SizedBox(width: 10),
-            Expanded(
-                child: _statCard(Icons.star_rounded,
-                    gig.rating.toStringAsFixed(1), 'Rating',
-                    const Color(0xFFF59E0B))),
-            const SizedBox(width: 10),
-            Expanded(
-                child: _statCard(Icons.visibility_outlined,
-                    '${gig.totalViews}', 'Views',
-                    const Color(0xFF7C3AED))),
-          ],
+    icon: Icons.bar_chart_rounded,
+    title: 'Service Stats',
+    child: Row(
+      children: [
+        Expanded(
+          child: _statCard(
+            Icons.shopping_bag_outlined,
+            '${gig.totalOrders}',
+            'Orders',
+            AppColors.primary,
+          ),
         ),
-      );
+        const SizedBox(width: 10),
+        Expanded(
+          child: _statCard(
+            Icons.star_rounded,
+            gig.rating.toStringAsFixed(1),
+            'Rating',
+            const Color(0xFFF59E0B),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _statCard(
+            Icons.visibility_outlined,
+            '${gig.totalViews}',
+            'Views',
+            const Color(0xFF7C3AED),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _statCard(IconData icon, String value, String label, Color color) =>
       Container(
@@ -934,15 +1055,22 @@ class _GigDetailsViewState extends State<GigDetailsView> {
           children: [
             Icon(icon, color: color, size: 20),
             const SizedBox(height: 6),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
       );
@@ -951,53 +1079,62 @@ class _GigDetailsViewState extends State<GigDetailsView> {
     required IconData icon,
     required String title,
     required Widget child,
-  }) =>
-      Container(
-        margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.borderGray),
-          boxShadow: AppColors.subtleShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  }) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.borderGray),
+      boxShadow: AppColors.subtleShadow,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.orangeGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 16),
-                ),
-                const SizedBox(width: 10),
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary)),
-              ],
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: AppColors.orangeGradient,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 16),
             ),
-            const SizedBox(height: 14),
-            child,
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ],
         ),
-      );
+        const SizedBox(height: 14),
+        child,
+      ],
+    ),
+  );
 
   Widget _buildBottomBar(BuildContext context, GigModel gig) {
     return Consumer<GigDetailsProvider>(
       builder: (_, prov, __) {
         final pkg = prov.selectedPackage ?? gig.basicPackage;
-        final pkgName =
-            ['Basic', 'Standard', 'Premium'][prov.selectedPackageIndex];
+        final pkgName = [
+          'Basic',
+          'Standard',
+          'Premium',
+        ][prov.selectedPackageIndex];
         return Container(
           padding: EdgeInsets.fromLTRB(
-              16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+            16,
+            12,
+            16,
+            MediaQuery.of(context).padding.bottom + 12,
+          ),
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border(top: BorderSide(color: AppColors.borderGray)),
@@ -1015,9 +1152,13 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(pkgName,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary)),
+                  Text(
+                    pkgName,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   Text(
                     'Rs. ${pkg.price.toStringAsFixed(0)}',
                     style: const TextStyle(
@@ -1038,16 +1179,36 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                     color: AppColors.primaryExtraLight,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: AppColors.primary.withOpacity(0.3)),
+                      color: AppColors.primary.withOpacity(0.3),
+                    ),
                   ),
-                  child: const Icon(Icons.chat_bubble_outline_rounded,
-                      color: AppColors.primary, size: 22),
+                  child: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
-                  onTap: () => HapticFeedback.mediumImpact(),
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    const packageTypes = ['basic', 'standard', 'premium'];
+                    final packageType = packageTypes[prov.selectedPackageIndex];
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider(
+                          create: (_) => BookingProvider(),
+                          child: BookingView(
+                            gig: gig,
+                            packageType: packageType,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -1065,15 +1226,21 @@ class _GigDetailsViewState extends State<GigDetailsView> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.calendar_today_rounded,
-                              color: Colors.white, size: 16),
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                           SizedBox(width: 8),
-                          Text('Book Now',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.3)),
+                          Text(
+                            'Book Now',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1133,9 +1300,10 @@ class _ImageViewerState extends State<_ImageViewer> {
                     widget.images[i],
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => const Icon(
-                        Icons.broken_image_rounded,
-                        color: Colors.white54,
-                        size: 60),
+                      Icons.broken_image_rounded,
+                      color: Colors.white54,
+                      size: 60,
+                    ),
                   ),
                 ),
               ),
@@ -1154,8 +1322,11 @@ class _ImageViewerState extends State<_ImageViewer> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white24, width: 1),
                 ),
-                child: const Icon(Icons.close_rounded,
-                    color: Colors.white, size: 18),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
             ),
           ),
@@ -1199,9 +1370,7 @@ class _FaqTileState extends State<_FaqTile> {
         duration: const Duration(milliseconds: 250),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: _expanded
-              ? AppColors.primaryExtraLight
-              : AppColors.lightGray,
+          color: _expanded ? AppColors.primaryExtraLight : AppColors.lightGray,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: _expanded
@@ -1225,13 +1394,16 @@ class _FaqTileState extends State<_FaqTile> {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: Text('Q',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: _expanded
-                                  ? Colors.white
-                                  : AppColors.textSecondary)),
+                      child: Text(
+                        'Q',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _expanded
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1239,21 +1411,24 @@ class _FaqTileState extends State<_FaqTile> {
                     child: Text(
                       widget.faq.question,
                       style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _expanded
-                              ? AppColors.primary
-                              : AppColors.textPrimary),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _expanded
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
+                      ),
                     ),
                   ),
                   AnimatedRotation(
                     turns: _expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 250),
-                    child: Icon(Icons.keyboard_arrow_down_rounded,
-                        color: _expanded
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                        size: 22),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: _expanded
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
@@ -1273,20 +1448,26 @@ class _FaqTileState extends State<_FaqTile> {
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Text('A',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF059669))),
+                        child: Text(
+                          'A',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF059669),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(widget.faq.answer,
-                          style: const TextStyle(
-                              fontSize: 12.5,
-                              color: AppColors.textSecondary,
-                              height: 1.6)),
+                      child: Text(
+                        widget.faq.answer,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                          height: 1.6,
+                        ),
+                      ),
                     ),
                   ],
                 ),

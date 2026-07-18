@@ -3,10 +3,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/appointment_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/dm_list_provider.dart';
 import 'providers/fetch_dr_provider.dart';
 import 'providers/homegig_provider.dart';
+import 'providers/order_provider.dart';
 import 'widgets/auth_wrapper.dart';
 
 void main() async {
@@ -28,7 +30,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DoctorProvider()),
         ChangeNotifierProvider(create: (_) => DmProvider()),
         ChangeNotifierProvider(create: (_) => DmListProvider()),
-
+        ChangeNotifierProvider(create: (_) => BookingProvider()),
+        ChangeNotifierProvider(create: (_) => AppointmentsProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
