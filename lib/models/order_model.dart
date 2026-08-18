@@ -1,26 +1,13 @@
-// lib/models/order_model.dart  ·  PATIENT APP
+// lib/models/order_model.dart  ·  PATIENT APP  (mirror this on doctor app too)
 // ════════════════════════════════════════════════════════════════════════════
-// The "order" is CareSync's equivalent of a Fiverr order / an appointment.
-// One Firestore doc per booking. Both patient app and doctor app read from
-// the SAME 'orders' collection — this model's shape should be mirrored
-// exactly on the doctor app side (same field names) so both apps agree.
+// SAME schema as before, with ONE addition: `deliveryDeadline`.
 //
-// Firestore schema:
-//   Collection: 'orders'
-//     doc: {orderId}
-//       participantIds: [patientId, doctorId]   ← for security rules & queries
-//       patientId, patientName, patientImageUrl
-//       doctorId, doctorName, doctorImageUrl
-//       gigId, gigTitle
-//       packageType: 'basic' | 'standard' | 'premium'
-//       packageName, packagePrice, packageDeliveryTime, packageFeatures[]
-//       requirements: patient's answer to the gig's requirements question
-//       status: 'pendingPayment' | 'active' | 'delivered' | 'completed' | 'cancelled'
-//       paymentStatus: 'pending' | 'paid' | 'refunded'
-//       paymentMethod: 'jazzcash' | ... (null until paid)
-//       transactionRef: gateway's reference once paid
-//       videoCallChannelId: unique room id for ZegoCloud, = orderId
-//       createdAt, updatedAt, deliveredAt, completedAt
+// This is computed ONCE, server-side-equivalent (inside OrderService.markPaid,
+// at the moment payment succeeds), and stored in Firestore. Both apps read
+// the SAME stored deadline — that's what keeps the countdown perfectly in
+// sync between patient and doctor without either app needing to talk to
+// the other directly. Each app just ticks its own local Timer against the
+// same fixed deadline.
 // ════════════════════════════════════════════════════════════════════════════
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -58,6 +45,27 @@ OrderPaymentStatus paymentStatusFromString(String? v) {
 String paymentStatusToString(OrderPaymentStatus s) => s.name;
 
 // ══════════════════════════════════════════════════════════════════════════════
+// DELIVERY-TIME PARSER
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Converts the gig package's delivery-time label (one of the fixed strings
+/// used in create_gig_view.dart's `_deliveries` list) into a Duration.
+/// Falls back to 24 hours for anything unrecognised.
+Duration parseDeliveryDuration(String label) {
+  switch (label) {
+    case '3 hours':  return const Duration(hours: 3);
+    case '6 hours':  return const Duration(hours: 6);
+    case '12 hours': return const Duration(hours: 12);
+    case '1 day':    return const Duration(days: 1);
+    case '2 days':   return const Duration(days: 2);
+    case '3 days':   return const Duration(days: 3);
+    case '5 days':   return const Duration(days: 5);
+    case '7 days':   return const Duration(days: 7);
+    default:         return const Duration(hours: 24);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // ORDER MODEL
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -90,6 +98,10 @@ class OrderModel {
 
   final String videoCallChannelId;
 
+  /// When the delivery countdown ends — set once, the moment payment is
+  /// confirmed. Null until then (no countdown before the order is active).
+  final DateTime? deliveryDeadline;
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? deliveredAt;
@@ -116,6 +128,7 @@ class OrderModel {
     this.paymentMethod,
     this.transactionRef,
     required this.videoCallChannelId,
+    this.deliveryDeadline,
     this.createdAt,
     this.updatedAt,
     this.deliveredAt,
@@ -127,6 +140,17 @@ class OrderModel {
   bool get isCompleted  => status == OrderStatus.completed;
   bool get isCancelled  => status == OrderStatus.cancelled;
   bool get canJoinCall  => isPaid && (status == OrderStatus.active || status == OrderStatus.delivered);
+
+  /// Time left until delivery is due, or Duration.zero if already passed
+  /// or no deadline set yet.
+  Duration get timeRemaining {
+    if (deliveryDeadline == null) return Duration.zero;
+    final diff = deliveryDeadline!.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  bool get isOverdue =>
+      deliveryDeadline != null && DateTime.now().isAfter(deliveryDeadline!);
 
   factory OrderModel.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
@@ -151,6 +175,7 @@ class OrderModel {
       paymentMethod: d['paymentMethod'] as String?,
       transactionRef: d['transactionRef'] as String?,
       videoCallChannelId: d['videoCallChannelId'] as String? ?? doc.id,
+      deliveryDeadline: _ts(d['deliveryDeadline']),
       createdAt:   _ts(d['createdAt']),
       updatedAt:   _ts(d['updatedAt']),
       deliveredAt: _ts(d['deliveredAt']),

@@ -12,6 +12,9 @@ import 'package:provider/provider.dart';
 import '../../models/order_model.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/delivery_countdown.dart';
+import '../video_call/video_call_view.dart';
+
 
 class AppointmentsView extends StatefulWidget {
   const AppointmentsView({super.key});
@@ -285,16 +288,20 @@ class _AppointmentsViewState extends State<AppointmentsView> {
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Colors.teal, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
+                      Wrap(spacing: 8, runSpacing: 6, children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(statusLabel,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
                         ),
-                        child: Text(statusLabel,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
-                      ),
+                        if (order.status == OrderStatus.active)
+                          DeliveryCountdown(deadline: order.deliveryDeadline),
+                      ]),
                     ],
                   ),
                 ),
@@ -359,14 +366,7 @@ class _AppointmentsViewState extends State<AppointmentsView> {
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: () {
-              // Video calling isn't wired up yet — ZegoCloud integration
-              // is the next step. This is intentionally a placeholder so
-              // the button doesn't silently do nothing.
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Video calling is coming soon for this appointment.'),
-              ));
-            },
+            onPressed: () => _joinCall(context, order),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -408,6 +408,22 @@ class _AppointmentsViewState extends State<AppointmentsView> {
         ),
         child: Text('View Details',
             style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  void _joinCall(BuildContext context, OrderModel order) {
+    final patient = context.read<PatientAuthProvider>().patient;
+    if (patient == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoCallView(
+          callID: order.videoCallChannelId,
+          currentUserID: patient.patientId,
+          currentUserName: patient.name,
+        ),
       ),
     );
   }

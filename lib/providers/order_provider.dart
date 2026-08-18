@@ -1,4 +1,4 @@
-// lib/providers/booking_provider.dart  ·  PATIENT APP
+// lib/providers/order_provider.dart  ·  PATIENT APP
 // ════════════════════════════════════════════════════════════════════════════
 // Drives the booking wizard: requirements → review & pay → confirmation.
 // ════════════════════════════════════════════════════════════════════════════
@@ -82,56 +82,15 @@ class BookingProvider extends ChangeNotifier {
   //
   // ⚠️ PLACEHOLDER — this simulates a successful Stripe payment with a
   // short delay and a fake transaction reference. When Stripe is wired
-  // up, replace the body of this method with the block commented out
-  // below (or similar), and only invoke _service.markPaid(...) once the
-  // gateway confirms success. Nothing in BookingView or OrderService
-  // needs to change for that swap.
+  // up, replace the body of this method with the real SDK/API call, and
+  // only invoke _service.markPaid(...) once the gateway confirms success.
+  // Nothing in BookingView or OrderService needs to change for that swap
+  // (markPaid's signature already matches what a real gateway confirmation
+  // would give you — just swap where transactionRef comes from).
   //
-  // ─── REAL STRIPE FLOW (uncomment once functions/index.js is deployed
-  // and `flutter_stripe` + `cloud_functions` are added to pubspec.yaml) ───
-  //
-  // Future<bool> confirmPayment() async {
-  //   if (_createdOrder == null) return false;
-  //   _isPaying = true; notifyListeners();
-  //   try {
-  //     // 1. Ask our Cloud Function to create a PaymentIntent (secret key
-  //     //    never leaves the server — see cloud_functions_index.js).
-  //     final callable = FirebaseFunctions.instance
-  //         .httpsCallable('createPaymentIntent');
-  //     final result = await callable.call({
-  //       'amount': (_createdOrder!.packagePrice * 100).round(), // paisa
-  //       'currency': 'pkr',
-  //       'orderId': _createdOrder!.orderId,
-  //     });
-  //     final clientSecret = result.data['clientSecret'] as String;
-  //
-  //     // 2. Show Stripe's own payment sheet (card entry, 3-D Secure, etc.)
-  //     await stripe.Stripe.instance.initPaymentSheet(
-  //       paymentSheetParameters: stripe.SetupPaymentSheetParameters(
-  //         paymentIntentClientSecret: clientSecret,
-  //         merchantDisplayName: 'CareSync',
-  //       ),
-  //     );
-  //     await stripe.Stripe.instance.presentPaymentSheet();
-  //
-  //     // 3. If we got here without throwing, Stripe confirmed the charge.
-  //     await _service.markPaid(
-  //       orderId: _createdOrder!.orderId,
-  //       paymentMethod: 'stripe',
-  //       transactionRef: result.data['paymentIntentId'] as String,
-  //     );
-  //     _isPaying = false; notifyListeners();
-  //     return true;
-  //   } on stripe.StripeException catch (e) {
-  //     _errorMessage = e.error.localizedMessage ?? 'Payment was cancelled.';
-  //     _isPaying = false; notifyListeners();
-  //     return false;
-  //   } catch (e) {
-  //     _errorMessage = 'Payment failed. Please try again.';
-  //     _isPaying = false; notifyListeners();
-  //     return false;
-  //   }
-  // }
+  // NOTE: markPaid also computes and stores `deliveryDeadline` — that's
+  // what powers the countdown timer on both apps. Whatever replaces this
+  // mock still needs to pass `packageDeliveryTime` through unchanged.
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<bool> confirmPayment() async {
@@ -151,6 +110,7 @@ class BookingProvider extends ChangeNotifier {
         orderId: _createdOrder!.orderId,
         paymentMethod: 'stripe',
         transactionRef: fakeTxnRef,
+        packageDeliveryTime: _createdOrder!.packageDeliveryTime,
       );
 
       _isPaying = false;

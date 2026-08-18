@@ -659,7 +659,7 @@ class _RegisterViewState extends State<RegisterView> {
     );
 
     if (ok && mounted) {
-      Navigator.of(context).pushNamed('/Mainscreen');
+      Navigator.of(context).pushNamed('/mainscreen');
     }
   }
 
