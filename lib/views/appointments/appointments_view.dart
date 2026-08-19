@@ -8,6 +8,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart' as zego_uikit_prebuilt_call;
 
 import '../../models/order_model.dart';
 import '../../providers/appointment_provider.dart';
@@ -412,7 +413,7 @@ class _AppointmentsViewState extends State<AppointmentsView> {
     );
   }
 
-  void _joinCall(BuildContext context, OrderModel order) {
+   void _joinCall(BuildContext context, OrderModel order) {
     final patient = context.read<PatientAuthProvider>().patient;
     if (patient == null) return;
 

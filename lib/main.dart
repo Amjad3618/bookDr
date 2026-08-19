@@ -11,6 +11,10 @@ import 'providers/homegig_provider.dart';
 import 'providers/order_provider.dart';
 import 'widgets/auth_wrapper.dart';
 
+// Zego's call-invitation UI needs a global navigatorKey so it can push the
+// incoming-call screen on top of whatever page the patient is currently on.
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -35,6 +39,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        navigatorKey: navigatorKey, // ← required by Zego's invitation overlay
         home: const AuthWrapper(),
       ),
     );

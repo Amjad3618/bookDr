@@ -1,9 +1,18 @@
+
+
+// lib/views/video_call/video_call_view.dart  ·  PATIENT APP
+// ════════════════════════════════════════════════════════════════════════════
+// Thin wrapper around Zego's prebuilt one-on-one video call widget.
+// Keeps appID/appSign in ONE place (ZegoConfig) so no other screen has to
+// know or repeat those values — they just push VideoCallView with a
+// callID + the current user's id/name.
+// ════════════════════════════════════════════════════════════════════════════
+
 import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 
-const int kZegoAppID = 1027414689;
-const String kZegoAppSign =
-    'c95ff708013e259b4fb3429aac01fa15b25fbd55b0d6a29f5a900a315f283700';
+import '../../core/constants/zegoconfigs.dart';
+
 
 class VideoCallView extends StatelessWidget {
   final String callID;
@@ -19,11 +28,9 @@ class VideoCallView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kZegoAppID == 0 || kZegoAppSign.isEmpty) {
+    if (ZegoConfig.appID == 0 || ZegoConfig.appSign.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Video Call'),
-        ),
+        appBar: AppBar(title: const Text('Video Call')),
         body: const Center(
           child: Text('ZegoCloud credentials are missing'),
         ),
@@ -31,8 +38,8 @@ class VideoCallView extends StatelessWidget {
     }
 
     return ZegoUIKitPrebuiltCall(
-      appID: kZegoAppID,
-      appSign: kZegoAppSign,
+      appID: ZegoConfig.appID,
+      appSign: ZegoConfig.appSign,
       userID: currentUserID,
       userName: currentUserName,
       callID: callID,

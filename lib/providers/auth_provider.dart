@@ -4,6 +4,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
+import 'package:zego_uikit_signaling_plugin/zego_uikit_signaling_plugin.dart';
+import '../core/constants/zegoconfigs.dart';
 import '../models/patient_model.dart';
 import '../services/auth_services.dart';
 
@@ -41,6 +44,46 @@ class PatientAuthProvider extends ChangeNotifier {
   double get totalSpent    => _patient?.totalSpent    ?? 0;
 
   // ══════════════════════════════════════════════════════════════════════════
+  // ZEGO — call invitation service init / uninit
+  // ══════════════════════════════════════════════════════════════════════════
+  //
+  // Doctor app sends video-call invitations via
+  // ZegoUIKitPrebuiltCallInvitationService().send(...) targeting this
+  // patient's patientId. For the patient's phone to actually ring and show
+  // the incoming-call screen, THIS app must also have the invitation
+  // service initialised with the matching userID — otherwise nothing
+  // happens on the patient side when the doctor starts a call.
+
+  bool _zegoInitialised = false;
+
+  Future<void> _initZego(PatientModel patient) async {
+    if (_zegoInitialised) return; // avoid double-init on rebuilds
+    try {
+      await ZegoUIKitPrebuiltCallInvitationService().init(
+        appID: ZegoConfig.appID,
+        appSign: ZegoConfig.appSign,
+        userID: patient.patientId,
+        userName: patient.name,
+        plugins: [ZegoUIKitSignalingPlugin()],
+      );
+      _zegoInitialised = true;
+    } catch (_) {
+      // Don't block login/session-restore if Zego init fails —
+      // video calling would just be unavailable this session.
+    }
+  }
+
+  Future<void> _uninitZego() async {
+    if (!_zegoInitialised) return;
+    try {
+      await ZegoUIKitPrebuiltCallInvitationService().uninit();
+    } catch (_) {
+    } finally {
+      _zegoInitialised = false;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // INITIALIZE — restores session on cold app start
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -62,6 +105,7 @@ class PatientAuthProvider extends ChangeNotifier {
           _patient = p;
           _setState(PatientAuthState.authenticated);
           _startPatientStream(user.uid);
+          await _initZego(p); // ← restores Zego session on app cold start
         } else {
           // Auth exists but no Firestore doc — sign out cleanly
           await _service.logout();
@@ -70,6 +114,7 @@ class PatientAuthProvider extends ChangeNotifier {
       } else {
         _patient = null;
         _patientSub?.cancel();
+        await _uninitZego();
         _setState(PatientAuthState.unauthenticated);
       }
     });
@@ -101,6 +146,7 @@ class PatientAuthProvider extends ChangeNotifier {
         _patient = result.patient;
         _setState(PatientAuthState.authenticated);
         _startPatientStream(_patient!.patientId);
+        await _initZego(_patient!); // ← init Zego right after login succeeds
         _setLoading(false);
         return true;
       } else {
@@ -147,6 +193,7 @@ class PatientAuthProvider extends ChangeNotifier {
         _patient = result.patient;
         _setState(PatientAuthState.authenticated);
         _startPatientStream(_patient!.patientId);
+        await _initZego(_patient!); // ← init Zego right after registration succeeds
         _setLoading(false);
         return true;
       } else {
@@ -169,6 +216,7 @@ class PatientAuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _handlingManually = true;
     _patientSub?.cancel();
+    await _uninitZego(); // ← must uninit BEFORE signing out of Firebase
     await _service.logout();
     _patient = null;
     _setState(PatientAuthState.unauthenticated);
